@@ -31,7 +31,6 @@ import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
-import liu.zhan.jun.sqlitetest.db.Constant;
 import liu.zhan.jun.sqlitetest.db.DbCallBack;
 import liu.zhan.jun.sqlitetest.db.DbManager;
 
@@ -314,15 +313,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void queryAll(View view) {
-        String sql = "select * from " + Constant.TABLENAME;
-        Cursor c = db.rawQuery(sql, null);
-        Log.i(TAG, "queryAll: ===|" + c.getColumnName(0) + "\t|" + c.getColumnName(1));
-        while (!c.isLast()) {
-            boolean next = c.moveToNext();
-            if (next) {
-                Log.i(TAG, "queryAll: ===|" + c.getInt(0) + "\t|" + c.getString(1));
-            }
-        }
+
     }
 
 
