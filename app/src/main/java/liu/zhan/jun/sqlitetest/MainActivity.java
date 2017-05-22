@@ -168,8 +168,9 @@ public class MainActivity extends AppCompatActivity {
     public void query2(View view) {
 
         Teacher teacher = new Teacher();
-        teacher._id = 0;
-        teacher.name = "";
+        //设置的值表示这个是要查询的字段
+        teacher._id = 0;//设置的值无实际意义
+        teacher.name = "?";//设置的值无实际意义
 
         DbManager.dbManager.query(teacher, "_id DESC", new DbCallBack<List<Teacher>>() {
             @Override
