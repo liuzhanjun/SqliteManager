@@ -1,21 +1,20 @@
 package liu.zhan.jun.sqlitetest.db;
 
-import android.Manifest;
+import android.content.ContentValues;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.os.Build;
-import android.provider.ContactsContract;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 
 
-import java.io.File;
+import com.google.gson.Gson;
+
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
@@ -24,10 +23,10 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
-import static android.content.Context.MODE_PRIVATE;
 
 /**
  * Created by 刘展俊 on 2017/5/19.
@@ -42,16 +41,19 @@ public enum DbManager {
         }
     };
 
+    private Gson mGson;
+
     private DbManager() {
         disposable = new CompositeDisposable();
+        mGson = new Gson();
     }
 
     public abstract DbManager getInstans(Context context);
 
     public static final String TAG = "LOGI";
     public WeakReference<Context> contextWeakReference;
-    public SQLiteDatabase db;
-    public CompositeDisposable disposable;
+    private SQLiteDatabase db;
+    private CompositeDisposable disposable;
 
     /**
      * @param databaseName 数据库的名称 如果只是名称
@@ -60,19 +62,156 @@ public enum DbManager {
      * @return
      */
     public SQLiteDatabase OpenDb(String databaseName) {
-        DatabaseContext context=new DatabaseContext(contextWeakReference.get());
+        DatabaseContext context = new DatabaseContext(contextWeakReference.get());
         DbSqliteHelper helper = new DbSqliteHelper(context, databaseName, null, 1);
         db = helper.getWritableDatabase();
         return db;
     }
 
     /**
-     * 创建表
+     * 插入数据
+     *
+     * @param t
+     * @param <T>
+     * @return
      */
-    public void createTable(Class<? extends TableModel> classz) {
+    public <T extends TableModel> void insert(T t, final DbCallBack<Long> callback) {
+
+        //在子线程中插入数据
+        InsertTable insert = new InsertTable(db, t, mGson);
+        disposable.add((Disposable) Observable.create(insert)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe(new Consumer<Disposable>() {
+                    @Override
+                    public void accept(@NonNull Disposable disposable) throws Exception {
+                        callback.before();
+                    }
+                }).subscribeWith(new DisposableObserver<Long>() {
+                    @Override
+                    public void onNext(Long o) {
+                        callback.success(o);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        callback.failure(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        callback.finish();
+                    }
+                }));
+
+    }
+
+
+    /**
+     * 更新数据
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void update(T t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
+
+        UpdateTable update = new UpdateTable(db, t, mGson, whereClause, whereArgs);
+        disposable.add((Disposable) Observable.create(update).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe(new Consumer<Disposable>() {
+                    @Override
+                    public void accept(@NonNull Disposable disposable) throws Exception {
+                        callback.before();
+                    }
+                }).subscribeWith(new DisposableObserver<Integer>() {
+                    @Override
+                    public void onNext(Integer o) {
+                        callback.success(o);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        callback.failure(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        callback.finish();
+                    }
+                }));
+
+
+    }
+
+
+    /**
+     * 取消所有订阅
+     */
+    public void unscribe(){
+        disposable.clear();
+    }
+
+    /**
+     * 清空数据
+     * @param t
+     */
+    public void deleteAll(Class<? extends TableModel> t,DbCallBack<Integer> callback){
+        delete(t,null,null,callback);
+    }
+    /**
+     * 删除数据
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param callback
+     */
+    public void delete(Class<? extends TableModel> t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
+
+        DeleteTable delete = new DeleteTable(db, t, whereClause, whereArgs);
+        disposable.add((Disposable) Observable.create(delete).subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe(new Consumer<Disposable>() {
+                    @Override
+                    public void accept(@NonNull Disposable disposable) throws Exception {
+                        callback.before();
+                    }
+                }).subscribeWith(new DisposableObserver<Integer>() {
+                    @Override
+                    public void onNext(Integer o) {
+                        callback.success(o);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        callback.failure(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        callback.finish();
+                    }
+                }));
+    }
+
+
+    /**
+     * 创建数据表
+     *
+     * @param classz
+     * @see TableModel
+     * @see TableField
+     * @see FieldType
+     * @see FieldConstraint
+     */
+    public <T> void createTable(Class<? extends TableModel> classz, final DbCallBack<Boolean> callback) {
 
         //判断是否已创建该表
         if (DbManager.dbManager.isHasTable(classz.getSimpleName())) {
+            callback.failure(new Throwable("该表已创建"));
             return;
         }
         //在子线程中操作
@@ -81,25 +220,28 @@ public enum DbManager {
                 Observable.create(create)
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
+                        .doOnSubscribe(new Consumer<Disposable>() {
+                            @Override
+                            public void accept(@NonNull Disposable disposable) throws Exception {
+                                callback.before();
+                            }
+                        })
                         .subscribeWith(new DisposableObserver<Boolean>() {
                             @Override
                             public void onNext(Boolean s) {
-                                if (s) {
-                                    Log.i(TAG, "onNext: 创建table成功");
-                                } else {
-                                    Log.i(TAG, "onNext: 创建table失败");
-                                }
+                                callback.success(s);
 
                             }
 
                             @Override
                             public void onError(Throwable e) {
+                                callback.failure(e);
                                 Log.i(TAG, "create table onError: " + e.getMessage());
                             }
 
                             @Override
                             public void onComplete() {
-
+                                callback.finish();
                             }
                         }));
 
@@ -126,6 +268,142 @@ public enum DbManager {
         return false;
     }
 
+    /**
+     * 更新数据
+     *
+     * @param <T>
+     */
+    public static class UpdateTable<T extends TableModel> implements ObservableOnSubscribe<Integer> {
+        private SQLiteDatabase db;
+        private T t;
+        private Gson mGson;
+        private String whereClause;
+        private String[] whereArgs;
+
+        public UpdateTable(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs) {
+            this.db = db;
+            this.t = t;
+            this.mGson = mGson;
+            this.whereClause = whereClause;
+            this.whereArgs = whereArgs;
+        }
+
+        @Override
+        public void subscribe(@NonNull ObservableEmitter<Integer> obe) throws Exception {
+            try {
+                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
+                Set<String> keySet = maps.keySet();
+                Iterator<String> iterator = keySet.iterator();
+                Class<?> classz = Class.forName(t.getClass().getName());
+                ContentValues values = new ContentValues();
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    Field field = classz.getField(key);
+                    boolean has = field.isAnnotationPresent(TableField.class);
+                    String value = maps.get(key);
+                    if (has) {
+                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                        values.put(key, value);
+                    }
+                }
+
+                int row = db.update(t.getClass().getSimpleName(), values, whereClause, whereArgs);
+                if (row != -1) {
+                    obe.onNext(row);
+                    obe.onComplete();
+                } else {
+                    obe.onError(new Throwable(" Error update row=" + row));
+                }
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+                obe.onError(e);
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+                obe.onError(e);
+            }
+
+        }
+    }
+
+    /**
+     * 删除数据
+     */
+    public static class DeleteTable implements ObservableOnSubscribe<Integer> {
+        private SQLiteDatabase db;
+        private Class<? extends TableModel> t;
+        private String whereClause;
+        private String[] whereArgs;
+
+        public DeleteTable(SQLiteDatabase db, Class<? extends TableModel> t, String whereClause, String[] whereArgs) {
+            this.db = db;
+            this.t = t;
+            this.whereClause = whereClause;
+            this.whereArgs = whereArgs;
+        }
+
+        @Override
+        public void subscribe(@NonNull ObservableEmitter<Integer> obe) throws Exception {
+            int row = db.delete(t.getSimpleName(), whereClause, whereArgs);
+            obe.onNext(row);
+            obe.onComplete();
+
+
+        }
+    }
+
+    /**
+     * 插入数据
+     *
+     * @param <T>
+     */
+    public static class InsertTable<T extends TableModel> implements ObservableOnSubscribe<Long> {
+        private SQLiteDatabase db;
+        private T t;
+        private Gson mGson;
+
+        public InsertTable(SQLiteDatabase db, T t, Gson mGson) {
+            this.db = db;
+            this.t = t;
+            this.mGson = mGson;
+        }
+
+        @Override
+        public void subscribe(@NonNull ObservableEmitter<Long> obe) throws Exception {
+            try {
+                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
+                Set<String> keySet = maps.keySet();
+                Iterator<String> iterator = keySet.iterator();
+                Class<?> classz = Class.forName(t.getClass().getName());
+                ContentValues values = new ContentValues();
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    Field field = classz.getField(key);
+                    boolean has = field.isAnnotationPresent(TableField.class);
+                    String value = maps.get(key);
+                    if (has) {
+                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                        values.put(key, value);
+                    }
+                }
+
+                long row = db.insert(t.getClass().getSimpleName(), null, values);
+                if (row != -1) {
+                    obe.onNext(row);
+                    obe.onComplete();
+                } else {
+                    obe.onError(new Throwable(" Error insert row=" + row));
+                }
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+                obe.onError(e);
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+                obe.onError(e);
+            }
+
+
+        }
+    }
 
     /**
      * 创建表
@@ -201,8 +479,12 @@ public enum DbManager {
             Log.i(TAG, "createTable: sql=" + sql.toString());
 
             db.execSQL(sql.toString());
+            if (isHasTable(tableName)) {
+                obe.onNext(true);
+            } else {
+                obe.onError(new Throwable("已经存在该表"));
+            }
 
-            obe.onNext(isHasTable(tableName));
             obe.onComplete();
         }
 

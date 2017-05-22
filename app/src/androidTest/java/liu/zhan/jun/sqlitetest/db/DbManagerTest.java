@@ -25,4 +25,18 @@ public class DbManagerTest {
         assertEquals(1,1);
     }
 
+    @Test
+    public void insert() throws  Exception{
+        Context appContext = InstrumentationRegistry.getTargetContext();
+        Log.i("LOGI","===============");
+        Teacher teacher=new Teacher();
+        teacher._id=20;
+        teacher.age=20;
+        teacher.name="小白";
+        teacher.friend="xiaohei";
+        DbManager.dbManager.getInstans(appContext).insert(teacher);
+        assertEquals(1,1);
+
+    }
+
 }

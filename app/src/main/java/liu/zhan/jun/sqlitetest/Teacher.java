@@ -7,6 +7,7 @@ import liu.zhan.jun.sqlitetest.db.TableField;
 
 /**
  * Created by 刘展俊 on 2017/5/21.
+ * 类型最好使用引用类型
  */
 
 public class Teacher implements DbManager.TableModel{
@@ -21,6 +22,6 @@ public class Teacher implements DbManager.TableModel{
     public String name;
     @TableField
     @FieldType(value ="Integer")
-    public int age;
+    public Integer age;
     public String friend;
 }

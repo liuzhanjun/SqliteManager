@@ -30,6 +30,7 @@ import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 import liu.zhan.jun.sqlitetest.db.Constant;
+import liu.zhan.jun.sqlitetest.db.DbCallBack;
 import liu.zhan.jun.sqlitetest.db.DbManager;
 
 public class MainActivity extends AppCompatActivity {
@@ -47,15 +48,15 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         content = (TextView) findViewById(R.id.content);
 //         path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
-        path="infos.db";
-        if(Build.VERSION.SDK_INT>=23){
+        path = "infos.db";
+        if (Build.VERSION.SDK_INT >= 23) {
             //检查权限
-            if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED){
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.READ_CALENDAR}, 1);
-            }else{
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_CALENDAR}, 1);
+            } else {
                 db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
             }
-        }else {
+        } else {
             //创建并打开数据库 一般情况下 getReadableDatabase 和getWritableDatabase是一样的，只有
             //在磁盘和数据库权限下打开对应的读写数据库
             db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
@@ -66,8 +67,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @android.support.annotation.NonNull String[] permissions, @android.support.annotation.NonNull int[] grantResults) {
-        if (requestCode==1){
-            if (grantResults[0]==PackageManager.PERMISSION_GRANTED){
+        if (requestCode == 1) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
             }
         }
@@ -183,26 +184,72 @@ public class MainActivity extends AppCompatActivity {
         }
 
     }
+
     /*
     创建表
      */
     public void createTable(View view) {
 
-        DbManager.dbManager.createTable(Teacher.class);
+        DbManager.dbManager.createTable(Teacher.class, new DbCallBack<Boolean>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 建表前");
+            }
+
+            @Override
+            public void success(Boolean result) {
+                Log.i(TAG, "success: 建表成功" + result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 建表失败" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 建表完成");
+            }
+        });
 //        String sql="create table Person (_id)";
 //        db.execSQL(sql);
     }
 
     public void db_insert(View view) {
-        ContentValues values = new ContentValues();
-        values.put(Constant.name, "王强");
-        db.insert(Constant.TABLENAME, null, values);
+//        ContentValues values = new ContentValues();
+//        values.put(Constant.name, "王强");
+//        db.insert(Constant.TABLENAME, null, values);
+        //数据表的类型使用引用类型
+        Teacher teacher = new Teacher();
+        teacher.friend = "bbbc";
+        teacher.name = "赵云";
+        DbManager.dbManager.insert(teacher, new DbCallBack<Long>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 开始插入数据");
+            }
+
+            @Override
+            public void success(Long row) {
+                Log.i(TAG, "success: " + row);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 插入失败============" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 插入完成");
+            }
+        });
     }
 
     public void db_Sql_insert(View view) {
         //insert into 表名 (字段1，字段2，字段3...) values (值1，值2，值3 ...)
-        String sql = "insert into " + Constant.TABLENAME + " (name) values (\"李四\")";
-        db.execSQL(sql);
+//        String sql = "insert into " + Constant.TABLENAME + " (name) values (\"李四\")";
+//        db.execSQL(sql);
     }
 
     public void queryAll(View view) {
@@ -219,10 +266,81 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void update1(View view) {
+        Teacher teacher = new Teacher();
+        teacher.name = "王思聪";
+        teacher.age = 30;
 
-        ContentValues values = new ContentValues();
-        values.put("name", "hps");
-        db.update(Constant.TABLENAME, values,
-                "_id=?", new String[]{"1"});
+        DbManager.dbManager.update(teacher, "_id=?", new String[]{"10"}, new DbCallBack<Integer>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 更新数据");
+            }
+
+            @Override
+            public void success(Integer result) {
+                Log.i(TAG, "success: 更新成功" + result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 更新失败" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 更新完成");
+            }
+        });
+    }
+
+
+    public void delete(View view){
+
+        DbManager.dbManager.delete(Teacher.class, "name=?", new String[]{"王思聪"}, new DbCallBack<Integer>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 删除开始");
+            }
+
+            @Override
+            public void success(Integer result) {
+                Log.i(TAG, "before: 删除成功"+result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 删除失败"+error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 删除完毕");
+            }
+        });
+    }
+
+    public void deleteAll(View view) {
+
+        DbManager.dbManager.delete(Teacher.class, null, null, new DbCallBack<Integer>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 删除所有数据开始");
+            }
+
+            @Override
+            public void success(Integer result) {
+                Log.i(TAG, "before: 删除所有数据成功" + result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 删除所有数据失败" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 删除所有数据完毕");
+            }
+        });
     }
 }
