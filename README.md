@@ -14,8 +14,8 @@
     </code>
 </pre>
 
-2.创建数据表
- \t\t2.1将数据表抽象成类 <code>这个类的属性都使用引用类型<code><br>
+2.创建数据表<br>
+ 2.1将数据表抽象成类 <code>这个类的属性都使用引用类型<code><br>
  <pre>
      <code>
             public class Teacher implements DbManager.TableModel{
@@ -39,7 +39,7 @@
 
      </code>
  </pre>
-  \t\t2.2 打开数据库，创建表<br>
+  2.2 打开数据库，创建表<br>
   <pre>
     <code>
             DbManager.dbManager.createTable(Teacher.class, new DbCallBack<Boolean>() {
