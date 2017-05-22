@@ -31,8 +31,6 @@ import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 import liu.zhan.jun.sqlitetest.db.Constant;
 import liu.zhan.jun.sqlitetest.db.DbManager;
-import liu.zhan.jun.sqlitetest.db.MySqlHelpe;
-import liu.zhan.jun.sqlitetest.db.TableField;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,7 +46,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         content = (TextView) findViewById(R.id.content);
-         path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
+//         path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
+        path="infos.db";
         if(Build.VERSION.SDK_INT>=23){
             //检查权限
             if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED){
