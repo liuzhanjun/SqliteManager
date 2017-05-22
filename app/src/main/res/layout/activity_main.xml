@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,27 +7,65 @@
     android:layout_height="match_parent"
     tools:context="liu.zhan.jun.sqlitetest.MainActivity">
 
-    <Button
-        android:id="@+id/button"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="创建数据库"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintVertical_bias="0.012"
-        android:onClick="createDb"/>
-    <TextView
-        android:id="@+id/content"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintVertical_bias="0.018"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-</android.support.constraint.ConstraintLayout>
+
+        <Button
+            android:id="@+id/crateTable"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="创建表"
+            android:onClick="createTable"/>
+
+        <Button
+            android:id="@+id/db_insert"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="插入数据SQLiteDatabase.insert"
+            android:onClick="db_insert"/>
+
+        <Button
+            android:id="@+id/db_Sql_insert"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="插入数据SQLiteDatabase.exeSql"
+            android:onClick="db_Sql_insert"/>
+        <Button
+            android:id="@+id/button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="query"
+            android:text="查询数据query"/>
+
+        <Button
+            android:id="@+id/button2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="query2"
+            android:text="查询数据queryBYSql"/>
+
+        <Button
+            android:id="@+id/button3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="queryAll"
+            android:text="查询数据所有数据"/>
+        <Button
+            android:id="@+id/button4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="update1"
+            android:text="修改数据"/>
+
+
+
+        <TextView
+            android:id="@+id/content"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            />
+    </LinearLayout>
+</ScrollView>

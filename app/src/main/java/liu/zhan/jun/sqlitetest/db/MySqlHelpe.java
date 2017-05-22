@@ -35,7 +35,10 @@ public class MySqlHelpe extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         Log.i(TAG, "onCreate: ====================");
-
+        String createStudent="create table "+Constant.TABLENAME
+                +"(_id Integer primary key,"
+                +Constant.name+" varchar(10),age Integer)";
+        db.execSQL(createStudent);
     }
 
     /**
@@ -47,10 +50,7 @@ public class MySqlHelpe extends SQLiteOpenHelper {
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         Log.i(TAG, "onUpgrade: =========================");
-        String createStudent="create table "+Constant.TABLENAME
-                +"(_id Integer primary key,"
-                +Constant.name+" varchar(10),age Integer)";
-        db.execSQL(createStudent);
+
 
     }
 
