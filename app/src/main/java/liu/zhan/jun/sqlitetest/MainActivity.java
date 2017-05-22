@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
                                 String queryresulte = null;
                                 //判断是否查到数据
                                 int cout = result.getCount();
-                                Log.i(TAG, "apply: 有"+1+"条数据");
+                                Log.i(TAG, "apply: 有" + 1 + "条数据");
                                 if (cout < 1) {
                                     return "";
                                 }
@@ -147,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             Log.i(TAG, "subscribe: id=" + Thread.currentThread().getId());
             Cursor result = null;//排序
             try {
-                result = db.query(Constant.TABLENAME,
+                result = db.query(Teacher.class.getSimpleName(),
                         new String[]{"_id", "name"},//要查询的字段
                         "_id=?",//查询的条件
                         new String[]{"10"},//上面？的值
@@ -168,38 +168,62 @@ public class MainActivity extends AppCompatActivity {
 
     public void query2(View view) {
 
-        Teacher teacher=new Teacher();
-        teacher._id=0;
-        teacher.name="";
+        Teacher teacher = new Teacher();
+        teacher._id = 0;
+        teacher.name = "";
 
-       DbManager.dbManager.query(teacher, null, null, null, null, null, new DbCallBack<List<Teacher>>() {
-           @Override
-           public void before() {
-               Log.i(TAG, "before: 开始查询");
-           }
+        DbManager.dbManager.query(teacher, "_id DESC", new DbCallBack<List<Teacher>>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 开始查询");
+            }
 
-           @Override
-           public void success(List<Teacher> result) {
-               if (result==null){
-                   return;
-               }
-               Log.i(TAG, "success: 查询成功");
-               for (int i=0;i<result.size();i++){
-                   Log.i(TAG, "success: ======="+result.get(i).toString());
-               }
-           }
+            @Override
+            public void success(List<Teacher> result) {
+                if (result == null) {
+                    return;
+                }
+                Log.i(TAG, "success: 查询成功");
+                for (int i = 0; i < result.size(); i++) {
+                    Log.i(TAG, "success: =======" + result.get(i).toString());
+                }
+            }
 
-           @Override
-           public void failure(Throwable error) {
-               Log.i(TAG, "failure: 失败了"+error.getMessage());
-           }
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 失败了" + error.getMessage());
+            }
 
-           @Override
-           public void finish() {
-               Log.i(TAG, "finish: 查询完毕");
-           }
-       });
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 查询完毕");
+            }
+        });
 
+    }
+
+    public void createStudent(View view) {
+        DbManager.dbManager.createTable(Student.class, new DbCallBack<Boolean>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 建表前");
+            }
+
+            @Override
+            public void success(Boolean result) {
+                Log.i(TAG, "success: 建表成功" + result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 建表失败" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 建表完成");
+            }
+        });
     }
 
     /*
@@ -228,8 +252,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "finish: 建表完成");
             }
         });
-//        String sql="create table Person (_id)";
-//        db.execSQL(sql);
+
     }
 
     public void db_insert(View view) {
@@ -264,9 +287,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void db_Sql_insert(View view) {
-        //insert into 表名 (字段1，字段2，字段3...) values (值1，值2，值3 ...)
-//        String sql = "insert into " + Constant.TABLENAME + " (name) values (\"李四\")";
-//        db.execSQL(sql);
+        Student student = new Student();
+        student.age = 18;
+        student.name = "小勇";
+        DbManager.dbManager.insert(student, new DbCallBack<Long>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: 插入数据前");
+            }
+
+            @Override
+            public void success(Long result) {
+                Log.i(TAG, "success: 插入数据成功" + result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: 插入数据失败" + error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+                Log.i(TAG, "finish: 插入数据完成");
+            }
+        });
     }
 
     public void queryAll(View view) {
@@ -311,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    public void delete(View view){
+    public void delete(View view) {
 
         DbManager.dbManager.delete(Teacher.class, "name=?", new String[]{"王思聪"}, new DbCallBack<Integer>() {
             @Override
@@ -321,12 +365,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void success(Integer result) {
-                Log.i(TAG, "before: 删除成功"+result);
+                Log.i(TAG, "before: 删除成功" + result);
             }
 
             @Override
             public void failure(Throwable error) {
-                Log.i(TAG, "failure: 删除失败"+error.getMessage());
+                Log.i(TAG, "failure: 删除失败" + error.getMessage());
             }
 
             @Override

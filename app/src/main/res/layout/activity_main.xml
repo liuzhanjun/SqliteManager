@@ -17,35 +17,41 @@
             android:id="@+id/crateTable"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="创建表"
+            android:text="创建Teacher表"
             android:onClick="createTable"/>
+        <Button
+            android:id="@+id/crateTable2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="创建Student表"
+            android:onClick="createStudent"/>
 
         <Button
             android:id="@+id/db_insert"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="插入数据SQLiteDatabase.insert"
+            android:text="Teacher插入数据"
             android:onClick="db_insert"/>
 
         <Button
             android:id="@+id/db_Sql_insert"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="插入数据SQLiteDatabase.exeSql"
+            android:text="Student插入数据"
             android:onClick="db_Sql_insert"/>
         <Button
             android:id="@+id/button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="query"
-            android:text="查询数据query"/>
+            android:text="封装前查询数据query"/>
 
         <Button
             android:id="@+id/button2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="query2"
-            android:text="查询数据queryBYSql"/>
+            android:text="封装后查询数据"/>
 
         <Button
             android:id="@+id/button3"

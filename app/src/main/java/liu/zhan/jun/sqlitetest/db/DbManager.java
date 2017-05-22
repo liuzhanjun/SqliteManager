@@ -71,6 +71,39 @@ public enum DbManager {
         return db;
     }
 
+
+    /**
+     * 只有条件的查询
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, final DbCallBack<List<T>> callback) {
+        this.query(t,whereClause,whereArgs,null,null,null,callback);
+    }
+
+    /**
+     * 无条件查询
+     * @param t
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void query(final T t, final DbCallBack<List<T>> callback) {
+        this.query(t,null,null,null,null,null,callback);
+    }
+
+    /**
+     * 查询排序
+     * @param t
+     * @param orderBy
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void query(final T t,String orderBy, final DbCallBack<List<T>> callback) {
+        this.query(t,null,null,null,null,orderBy,callback);
+    }
     /**
      * 查询
      *
