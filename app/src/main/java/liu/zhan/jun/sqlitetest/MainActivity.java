@@ -202,6 +202,12 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        DbManager.dbManager.unscribe();
+    }
+
     public void createStudent(View view) {
         DbManager.dbManager.createTable(Student.class, new DbCallBack<Boolean>() {
             @Override
