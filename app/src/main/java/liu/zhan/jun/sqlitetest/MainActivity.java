@@ -19,6 +19,8 @@ import android.widget.TextView;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.List;
+
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
@@ -93,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
                                 String queryresulte = null;
                                 //判断是否查到数据
                                 int cout = result.getCount();
+                                Log.i(TAG, "apply: 有"+1+"条数据");
                                 if (cout < 1) {
                                     return "";
                                 }
@@ -165,23 +168,37 @@ public class MainActivity extends AppCompatActivity {
 
     public void query2(View view) {
 
-        String sql = "select * from " + Constant.TABLENAME + " where _id=?";
+        Teacher teacher=new Teacher();
+        teacher._id=0;
+        teacher.name="";
 
-        Cursor result2 = db.rawQuery(sql, new String[]{"20"});
-        int count = result2.getCount();
-        if (count < 1) {
-            Log.i(TAG, "query2: =========没有查询到任何数据");
-            return;
-        }
-        while (!result2.isLast()) {
+       DbManager.dbManager.query(teacher, null, null, null, null, null, new DbCallBack<List<Teacher>>() {
+           @Override
+           public void before() {
+               Log.i(TAG, "before: 开始查询");
+           }
 
+           @Override
+           public void success(List<Teacher> result) {
+               if (result==null){
+                   return;
+               }
+               Log.i(TAG, "success: 查询成功");
+               for (int i=0;i<result.size();i++){
+                   Log.i(TAG, "success: ======="+result.get(i).toString());
+               }
+           }
 
-            boolean has = result2.moveToNext();
-            if (has)
-                Log.i(TAG, "createDb22222222: " + result2.getString(1) + "|" + result2.getInt(0));
+           @Override
+           public void failure(Throwable error) {
+               Log.i(TAG, "failure: 失败了"+error.getMessage());
+           }
 
-
-        }
+           @Override
+           public void finish() {
+               Log.i(TAG, "finish: 查询完毕");
+           }
+       });
 
     }
 

@@ -1,5 +1,7 @@
 package liu.zhan.jun.sqlitetest;
 
+import java.util.Arrays;
+
 import liu.zhan.jun.sqlitetest.db.DbManager;
 import liu.zhan.jun.sqlitetest.db.FieldConstraint;
 import liu.zhan.jun.sqlitetest.db.FieldType;
@@ -24,4 +26,16 @@ public class Teacher implements DbManager.TableModel{
     @FieldType(value ="Integer")
     public Integer age;
     public String friend;
+    public String [] freads;
+
+    @Override
+    public String toString() {
+        return "Teacher{" +
+                "_id=" + _id +
+                ", name='" + name + '\'' +
+                ", age=" + age +
+                ", friend='" + friend + '\'' +
+                ", freads=" + Arrays.toString(freads) +
+                '}';
+    }
 }

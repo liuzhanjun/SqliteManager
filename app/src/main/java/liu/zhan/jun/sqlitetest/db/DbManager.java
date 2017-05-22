@@ -12,8 +12,10 @@ import com.google.gson.Gson;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 import io.reactivex.Observable;
@@ -24,6 +26,7 @@ import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 
@@ -67,6 +70,121 @@ public enum DbManager {
         db = helper.getWritableDatabase();
         return db;
     }
+
+    /**
+     * 查询
+     *
+     * @param t
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
+
+        QuerySubscrib query = new QuerySubscrib(
+                db,
+                t,
+                mGson,
+                whereClause,
+                whereArgs,
+                groupBy, having, orderBy);
+
+        disposable.add((Disposable) Observable.create(query)
+                .subscribeOn(Schedulers.io())
+                .map(new Function<Cursor,List<T>>() {
+                    @Override
+                    public List<T> apply(@NonNull Cursor o) throws Exception {
+                        //查询到有多少条数据
+                        int count = o.getCount();
+                        Log.i(TAG, "apply: 有" + count + "条数据");
+                        if (count < 1) {
+                            return null;
+                        }
+                        //每条数据有多少个字段
+                        int columnCount = o.getColumnCount();
+                        Log.i(TAG, "apply: columnCount===" + columnCount);
+                        List<T> results = null;
+                        StringBuffer json = new StringBuffer("[");
+                        //逐条读取每条数据
+                        while (!o.isLast()) {
+                            //游标移动到下一行
+                            boolean has = o.moveToNext();
+                            if (has) {
+
+                                //说明这行有数据
+
+                                json.append("{");
+                                for (int i = 0; i < columnCount; i++) {
+
+                                    String columnName = o.getColumnName(i);
+                                    int type = o.getType(i);
+                                    switch (type) {
+                                        case Cursor.FIELD_TYPE_STRING:
+                                            String stringValue = o.getString(i);
+                                            if (i == 0) {
+                                                json.append("\"" + columnName + "\":\"" + stringValue + "\"");
+                                            } else {
+                                                json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
+                                            }
+
+                                            break;
+                                        case Cursor.FIELD_TYPE_INTEGER:
+                                            int intValue = o.getInt(i);
+                                            if (i == 0) {
+                                                json.append("\"" + columnName + "\":" + intValue);
+                                            } else {
+                                                json.append(",\"" + columnName + "\":" + intValue);
+                                            }
+                                            break;
+                                        case Cursor.FIELD_TYPE_FLOAT:
+                                            float floatValue = o.getFloat(i);
+                                            if (i == 0) {
+                                                json.append("\"" + columnName + "\":" + floatValue);
+                                            } else {
+                                                json.append(",\"" + columnName + "\":" + floatValue);
+                                            }
+                                            break;
+                                    }
+
+                                }
+                                if (o.isLast()) {
+                                    json.append("}]");
+                                } else {
+                                    json.append("},");
+                                }
+
+
+                            }
+                        }
+                        return mGson.fromJson(json.toString(), callback.getmType());
+                    }
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnSubscribe(new Consumer<Disposable>() {
+                    @Override
+                    public void accept(@NonNull Disposable disposable) throws Exception {
+                        callback.before();
+                    }
+                })
+                .subscribeWith(new DisposableObserver<List<T>>() {
+                    @Override
+                    public void onNext(List<T> o) {
+                        callback.success(o);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        callback.failure(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        callback.finish();
+                    }
+                }));
+
+
+    }
+
 
     /**
      * 插入数据
@@ -150,17 +268,85 @@ public enum DbManager {
     /**
      * 取消所有订阅
      */
-    public void unscribe(){
+    public void unscribe() {
         disposable.clear();
+    }
+
+    public static class QuerySubscrib<T extends TableModel> implements ObservableOnSubscribe<Cursor> {
+        private SQLiteDatabase db;
+        private T t;
+        private Gson mGson;
+        private String whereClause;
+        private String[] whereArgs;
+        private String groupBy;
+        private String having;
+        private String orderBy;
+
+
+        public QuerySubscrib(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy) {
+            this.db = db;
+            this.t = t;
+            this.mGson = mGson;
+            this.whereClause = whereClause;
+            this.whereArgs = whereArgs;
+            this.groupBy = groupBy;
+            this.having = having;
+            this.orderBy = orderBy;
+        }
+
+        @Override
+        public void subscribe(@NonNull ObservableEmitter<Cursor> e) throws Exception {
+
+            Log.i(TAG, "subscribe: id=" + Thread.currentThread().getId());
+            Cursor result = null;//排序
+            try {
+                ArrayList<String> keys = new ArrayList<String>();
+                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
+                Set<String> keySet = maps.keySet();
+                Iterator<String> iterator = keySet.iterator();
+                Class<?> classz = Class.forName(t.getClass().getName());
+
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    Field field = classz.getField(key);
+                    boolean has = field.isAnnotationPresent(TableField.class);
+                    String value = maps.get(key);
+                    if (has) {
+                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                        keys.add(key);
+                    }
+                }
+
+                String[] columns = new String[keys.size()];
+                for (int i = 0; i < keys.size(); i++) {
+                    columns[i] = keys.get(i);
+                }
+                result = db.query(t.getClass().getSimpleName(),
+                        columns,//要查询的字段
+                        whereClause,//查询的条件
+                        whereArgs,//上面？的值
+                        groupBy,//分组
+                        having,//分组后的条件
+                        orderBy);//排序
+            } catch (Exception e1) {
+                e1.printStackTrace();
+                e.onError(e1);
+            }
+
+            e.onNext(result);
+            e.onComplete();
+        }
     }
 
     /**
      * 清空数据
+     *
      * @param t
      */
-    public void deleteAll(Class<? extends TableModel> t,DbCallBack<Integer> callback){
-        delete(t,null,null,callback);
+    public void deleteAll(Class<? extends TableModel> t, DbCallBack<Integer> callback) {
+        delete(t, null, null, callback);
     }
+
     /**
      * 删除数据
      *
