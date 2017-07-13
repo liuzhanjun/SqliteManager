@@ -7,6 +7,7 @@
     <code>
         //在data/data/package/databases/下创建
         String path="info.db";
+        //如果是4.2或者4.4path=getFilesDir().getAbsolutePath()+"meituan.db"
         DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
         //在sd卡上创建(6.0后注意检查和申请权限)
         String path2=Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
