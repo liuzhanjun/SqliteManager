@@ -341,7 +341,7 @@ public enum DbManager {
 
                 while (iterator.hasNext()) {
                     String key = iterator.next();
-                    Field field = classz.getField(key);
+                    Field field = classz.getDeclaredField(key);
                     boolean has = field.isAnnotationPresent(TableField.class);
                     String value = maps.get(key);
                     if (has) {
@@ -517,7 +517,7 @@ public enum DbManager {
                 ContentValues values = new ContentValues();
                 while (iterator.hasNext()) {
                     String key = iterator.next();
-                    Field field = classz.getField(key);
+                    Field field = classz.getDeclaredField(key);
                     boolean has = field.isAnnotationPresent(TableField.class);
                     String value = maps.get(key);
                     if (has) {
@@ -596,7 +596,7 @@ public enum DbManager {
                 ContentValues values = new ContentValues();
                 while (iterator.hasNext()) {
                     String key = iterator.next();
-                    Field field = classz.getField(key);
+                    Field field = classz.getDeclaredField(key);
                     boolean has = field.isAnnotationPresent(TableField.class);
                     String value = maps.get(key);
                     if (has) {
