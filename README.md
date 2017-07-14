@@ -32,6 +32,9 @@
                 @TableField
                 @FieldType(value ="Integer")
                 public Integer age;
+                @TableField
+                @FieldType(value ="text")
+                public List<String> age;
                 public String friend;
                 public String [] freads;
 
