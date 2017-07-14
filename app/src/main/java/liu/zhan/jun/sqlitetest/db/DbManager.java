@@ -152,18 +152,19 @@ public enum DbManager {
                                     switch (type) {
                                         case Cursor.FIELD_TYPE_STRING:
                                             String stringValue = o.getString(i);
+                                            int arrayTag=stringValue.indexOf("[");
                                             if (i == 0) {
-//                                                if (arrayTag==0){
-                                                json.append("\"" + columnName + "\":" + stringValue);
-//                                                }else {
-//                                                    json.append("\"" + columnName + "\":\"" + stringValue + "\"");
-//                                                }
+                                                if (arrayTag==0){
+                                                    json.append("\"" + columnName + "\":" + stringValue);
+                                                }else {
+                                                    json.append("\"" + columnName + "\":\"" + stringValue + "\"");
+                                                }
                                             } else {
-//                                                if (arrayTag==0){
-                                                json.append(",\"" + columnName + "\":" + stringValue);
-//                                                }else {
-//                                                    json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
-//                                                }
+                                                if (arrayTag==0){
+                                                    json.append(",\"" + columnName + "\":" + stringValue);
+                                                }else {
+                                                    json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
+                                                }
                                             }
 
                                             break;
@@ -611,6 +612,13 @@ public enum DbManager {
                     String value = maps.get(key);
 
                     if (has) {
+//
+                        int start=value.indexOf("\"");
+                        int end=value.lastIndexOf("\"");
+
+                        if (start==0&&end==value.length()-1){
+                            value=value.substring(start+1,end);
+                        }
                         values.put(key, value);
                     }
                 }
