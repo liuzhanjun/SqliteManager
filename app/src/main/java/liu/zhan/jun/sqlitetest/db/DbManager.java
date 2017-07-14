@@ -647,7 +647,7 @@ public enum DbManager {
                 tableName = classz.getSimpleName();
                 sql.append(tableName + " (");
                 //获得所有属性
-                Field[] fields = classz.getFields();
+                Field[] fields = classz.getDeclaredFields();
                 for (int i = 0; i < fields.length; i++) {
                     //查看是否有TableField注解
                     boolean tablefile = fields[i].isAnnotationPresent(TableField.class);
