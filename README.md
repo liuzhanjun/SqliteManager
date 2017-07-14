@@ -73,6 +73,7 @@
   3.插入数据<p></p>
   <pre>
     <code>
+    如果插入的数据有集合的话，那么集合不能为null，
         Teacher teacher = new Teacher();
                 teacher.friend = "bbbc";
                 teacher.name = "赵云";
