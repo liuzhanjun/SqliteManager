@@ -34,7 +34,7 @@ public class GsonUtils {
 
         for (Map.Entry<String,JsonElement> entry : entrySet) {
             String key = entry.getKey();
-            String value = entry.getValue().getAsString();
+            String value = entry.getValue().toString();
             map.put(key, value);
         }
         return map;

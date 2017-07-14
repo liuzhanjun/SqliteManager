@@ -7,7 +7,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-
 import com.google.gson.Gson;
 
 import java.lang.ref.WeakReference;
@@ -154,9 +153,17 @@ public enum DbManager {
                                         case Cursor.FIELD_TYPE_STRING:
                                             String stringValue = o.getString(i);
                                             if (i == 0) {
-                                                json.append("\"" + columnName + "\":\"" + stringValue + "\"");
+//                                                if (arrayTag==0){
+                                                json.append("\"" + columnName + "\":" + stringValue);
+//                                                }else {
+//                                                    json.append("\"" + columnName + "\":\"" + stringValue + "\"");
+//                                                }
                                             } else {
-                                                json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
+//                                                if (arrayTag==0){
+                                                json.append(",\"" + columnName + "\":" + stringValue);
+//                                                }else {
+//                                                    json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
+//                                                }
                                             }
 
                                             break;
@@ -188,6 +195,7 @@ public enum DbManager {
 
                             }
                         }
+                        Log.i("DB", "json ="+json.toString());
                         return mGson.fromJson(json.toString(), callback.getmType());
                     }
                 })
@@ -227,7 +235,6 @@ public enum DbManager {
      * @return
      */
     public <T extends TableModel> void insert(T t, final DbCallBack<Long> callback) {
-
         //在子线程中插入数据
         InsertTable insert = new InsertTable(db, t, mGson);
         disposable.add((Disposable) Observable.create(insert)
@@ -365,9 +372,12 @@ public enum DbManager {
                 e1.printStackTrace();
                 e.onError(e1);
             }
-
-            e.onNext(result);
-            e.onComplete();
+            if (result!=null) {
+                e.onNext(result);
+                e.onComplete();
+            }else{
+                e.onError(new Throwable("没有数据"));
+            }
         }
     }
 
@@ -599,8 +609,8 @@ public enum DbManager {
                     Field field = classz.getDeclaredField(key);
                     boolean has = field.isAnnotationPresent(TableField.class);
                     String value = maps.get(key);
+
                     if (has) {
-                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
                         values.put(key, value);
                     }
                 }
