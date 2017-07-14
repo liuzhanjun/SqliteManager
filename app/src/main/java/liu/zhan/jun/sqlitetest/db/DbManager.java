@@ -533,6 +533,13 @@ public enum DbManager {
                     String value = maps.get(key);
                     if (has) {
                         Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                        int start=value.indexOf("\"");
+                        int end=value.lastIndexOf("\"");
+
+                        if (start==0&&end==value.length()-1){
+                            value=value.substring(start+1,end);
+                        }
+                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
                         values.put(key, value);
                     }
                 }
