@@ -149,47 +149,41 @@ public enum DbManager {
 
                                     String columnName = o.getColumnName(i);
                                     int type = o.getType(i);
+
                                     switch (type) {
                                         case Cursor.FIELD_TYPE_STRING:
                                             String stringValue = o.getString(i);
                                             int arrayTag=stringValue.indexOf("[");
-                                            if (i == 0) {
-                                                if (arrayTag==0){
-                                                    json.append("\"" + columnName + "\":" + stringValue);
-                                                }else {
-                                                    json.append("\"" + columnName + "\":\"" + stringValue + "\"");
-                                                }
-                                            } else {
-                                                if (arrayTag==0){
-                                                    json.append(",\"" + columnName + "\":" + stringValue);
-                                                }else {
-                                                    json.append(",\"" + columnName + "\":\"" + stringValue + "\"");
-                                                }
+                                            Log.i("DB", "columnName="+columnName+"value="+stringValue);
+                                            if (arrayTag==0){
+                                                json.append("\""+columnName + "\":" + stringValue+",");
+                                            }else {
+                                                json.append("\""+columnName + "\":\"" + stringValue + "\",");
                                             }
 
                                             break;
                                         case Cursor.FIELD_TYPE_INTEGER:
                                             int intValue = o.getInt(i);
-                                            if (i == 0) {
-                                                json.append("\"" + columnName + "\":" + intValue);
-                                            } else {
-                                                json.append(",\"" + columnName + "\":" + intValue);
-                                            }
+                                            json.append("\""+columnName + "\":" + intValue+",");
                                             break;
                                         case Cursor.FIELD_TYPE_FLOAT:
                                             float floatValue = o.getFloat(i);
-                                            if (i == 0) {
-                                                json.append("\"" + columnName + "\":" + floatValue);
-                                            } else {
-                                                json.append(",\"" + columnName + "\":" + floatValue);
-                                            }
+//
+                                            json.append("\""+columnName + "\":" + floatValue+",");
+//
                                             break;
                                     }
 
                                 }
                                 if (o.isLast()) {
+                                    if (json.lastIndexOf(",")==json.length()-1) {
+                                        json.deleteCharAt(json.length()-1);
+                                    }
                                     json.append("}]");
                                 } else {
+                                    if (json.lastIndexOf(",")==json.length()-1) {
+                                        json.deleteCharAt(json.length()-1);
+                                    }
                                     json.append("},");
                                 }
 
@@ -539,7 +533,6 @@ public enum DbManager {
                         if (start==0&&end==value.length()-1){
                             value=value.substring(start+1,end);
                         }
-                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
                         values.put(key, value);
                     }
                 }
