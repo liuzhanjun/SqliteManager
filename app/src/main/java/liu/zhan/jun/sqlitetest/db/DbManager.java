@@ -221,6 +221,14 @@ public enum DbManager {
 
     }
 
+    /**
+     * 关闭数据库连接
+     */
+    public void closeDB(){
+        if (db!=null&&db.isOpen()){
+            db.close();
+        }
+    }
 
     /**
      * 插入数据
