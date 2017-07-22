@@ -70,10 +70,35 @@
     </code>
   </pre>
 
+  2.3 自动更新表结构
+<pre>
+    <code>
+    DbManager.dbManager.AlterTable(MeiTuan.class, new DbCallBack<Boolean>() {
+                @Override
+                public void before() {
+                    Log.i(TAG, "before: ");
+                }
+
+                @Override
+                public void success(Boolean result) {
+                    Log.i(TAG, "success: ");
+                }
+
+                @Override
+                public void failure(Throwable error) {
+                    Log.i(TAG, "failure: "+error.getMessage());
+                }
+
+                @Override
+                public void finish() {
+
+                }
+            });
+    </code>
+    </pre>
   3.插入数据<p></p>
   <pre>
     <code>
-    如果插入的数据有集合的话，那么集合不能为null，
         Teacher teacher = new Teacher();
                 teacher.friend = "bbbc";
                 teacher.name = "赵云";
