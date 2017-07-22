@@ -12,14 +12,19 @@ import com.google.gson.Gson;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.CompositeDisposable;
@@ -44,6 +49,7 @@ public enum DbManager {
     };
 
     private Gson mGson;
+    private DbSqliteHelper helper;
 
     private DbManager() {
         disposable = new CompositeDisposable();
@@ -65,7 +71,7 @@ public enum DbManager {
      */
     public SQLiteDatabase OpenDb(String databaseName) {
         DatabaseContext context = new DatabaseContext(contextWeakReference.get());
-        DbSqliteHelper helper = new DbSqliteHelper(context, databaseName, null, 1);
+        helper = new DbSqliteHelper(context, databaseName, null, 1);
         db = helper.getWritableDatabase();
         return db;
     }
@@ -221,14 +227,7 @@ public enum DbManager {
 
     }
 
-    /**
-     * 关闭数据库连接
-     */
-    public void closeDB(){
-        if (db!=null&&db.isOpen()){
-            db.close();
-        }
-    }
+
 
     /**
      * 插入数据
@@ -378,8 +377,6 @@ public enum DbManager {
             if (result!=null) {
                 e.onNext(result);
                 e.onComplete();
-            }else{
-                e.onError(new Throwable("没有数据"));
             }
         }
     }
@@ -478,6 +475,57 @@ public enum DbManager {
                         }));
 
 
+    }
+
+
+    /**
+     * 更新表
+     * @param classz
+     * @see TableModel
+     * @see TableField
+     * @see FieldType
+     * @see FieldConstraint
+     */
+    public <T> void AlterTable(final Class<? extends TableModel> classz, final DbCallBack<Boolean> callback) {
+        //判断是否已创建该表
+        if (DbManager.dbManager.isHasTable(classz.getSimpleName())) {
+            //如果创建了该表才能去更新
+            queryTableStruct querystruct=new queryTableStruct(classz,db);
+            disposable.add(
+                    Observable.create(querystruct)
+                            .subscribeOn(Schedulers.io())
+                            .flatMap(new Function<ConcurrentSkipListSet<String>, ObservableSource<Boolean>>() {
+                                @Override
+                                public ObservableSource<Boolean> apply(@NonNull ConcurrentSkipListSet<String> s) throws Exception {
+                                    return new AlterTableSub(classz,db,s);
+                                }
+                            })
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .doOnSubscribe(new Consumer<Disposable>() {
+                                @Override
+                                public void accept(@NonNull Disposable disposable) throws Exception {
+                                    callback.before();
+                                }
+                            })
+                            .subscribeWith(new DisposableObserver<Boolean>() {
+                                @Override
+                                public void onNext(Boolean s) {
+                                    callback.success(s);
+                                    //
+
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    callback.failure(e);
+                                }
+
+                                @Override
+                                public void onComplete() {
+                                    callback.finish();
+                                }
+                            }));
+        }
     }
 
     /**
@@ -651,6 +699,149 @@ public enum DbManager {
     }
 
     /**
+     * 查询表结构
+     */
+    public static class queryTableStruct implements ObservableOnSubscribe<ConcurrentSkipListSet<String>>{
+        private Class classz;
+        private SQLiteDatabase db;
+        public queryTableStruct(Class classz, SQLiteDatabase db) {
+            this.classz = classz;
+            this.db = db;
+        }
+        @Override
+        public void subscribe(@NonNull ObservableEmitter< ConcurrentSkipListSet<String>> e) throws Exception {
+            String sql="PRAGMA table_info ("+classz.getSimpleName()+")";
+            Cursor cursor=db.rawQuery(sql,null);
+            ConcurrentSkipListSet<String> allColumn=new ConcurrentSkipListSet<String>();
+            while (!cursor.isLast()){
+                boolean has=cursor.moveToNext();
+                if (has) {
+                    String name = cursor.getString(cursor.getColumnIndex("name"));
+                    allColumn.add(name);
+                }
+            }
+            e.onNext(allColumn);
+            e.onComplete();
+
+        }
+    }
+
+    /**
+     * 更新表结构
+     */
+    public static class AlterTableSub implements  ObservableSource<Boolean>{
+        private Class classz;
+        private SQLiteDatabase db;
+        private ConcurrentSkipListSet<String> columnName;//旧表原有的字段
+
+        public AlterTableSub(Class classz, SQLiteDatabase db,ConcurrentSkipListSet<String> columnName) {
+            this.classz = classz;
+            this.db = db;
+            this.columnName=columnName;
+        }
+
+        @Override
+        public void subscribe(@NonNull Observer<? super Boolean> observer) {
+            //先判断新表的字段
+            //获得所有属性
+
+            Field[] fields = classz.getDeclaredFields();
+            ConcurrentSkipListMap<String,FieldStatus> newColumn= getNewColumn(fields,columnName);
+            if (newColumn.size()<=0){
+                observer.onError(new Throwable("没有需要添加的字段"));
+                return;
+            }
+            Iterator iterator=newColumn.keySet().iterator();
+            while (iterator.hasNext()) {
+//                alter table CashPayDbInfo add  alls varchar(25)iterator.next()
+                String key= (String) iterator.next();
+                FieldStatus value=newColumn.get(key);
+                StringBuilder sql=new StringBuilder("alter table "+classz.getSimpleName()+" add COLUMN "+key+" "+value._type);
+                if (value.getFieldConstraint()!=null) {
+                    for (int i = 0; i < value.getFieldConstraint().length; i++) {
+                        sql.append(" " + value.getFieldConstraint()[i]);
+                    }
+                }
+
+                db.execSQL(sql.toString());
+            }
+            observer.onNext(true);
+            observer.onComplete();
+
+        }
+
+        /**
+         * 获得要新添加的字段
+         * @param fields
+         * @return
+         */
+        private ConcurrentSkipListMap<String,FieldStatus> getNewColumn(Field[] fields, ConcurrentSkipListSet<String> oldColumn) {
+            ConcurrentSkipListMap<String,FieldStatus> allColumn=new ConcurrentSkipListMap<String,FieldStatus>();
+            for (int i = 0; i < fields.length; i++) {
+                //查看是否有TableField注解
+                boolean tablefile = fields[i].isAnnotationPresent(TableField.class);
+                //这个判断表示该属性是否是表结构的字段
+                if (tablefile) {
+                    FieldType mode = fields[i].getAnnotation(FieldType.class);
+                    //获得字段名称
+                    String fieldName = fields[i].getName();
+                    //获得字段类型
+                    String value = mode.value();
+                    //获得字段约束
+                    String[] values=null;
+                    boolean isConstraint = fields[i].isAnnotationPresent(FieldConstraint.class);
+                    if (isConstraint) {
+                        FieldConstraint constraint = fields[i].getAnnotation(FieldConstraint.class);
+                        values = constraint.value();
+                    }
+                    FieldStatus fs=new FieldStatus(value,values);
+                    allColumn.put(fieldName,fs);
+                }
+            }
+            Iterator iterator=oldColumn.iterator();
+            while (iterator.hasNext()) {
+                allColumn.remove(iterator.next());
+            }
+
+            return  allColumn;
+        }
+    }
+
+    public static class FieldStatus{
+        public String _type;
+        public String[] fieldConstraint;
+
+        public FieldStatus(String _type, String[] fieldConstraint) {
+            this._type = _type;
+            this.fieldConstraint = fieldConstraint;
+        }
+
+        public String get_type() {
+            return _type;
+        }
+
+        public void set_type(String _type) {
+            this._type = _type;
+        }
+
+        public String[] getFieldConstraint() {
+            return fieldConstraint;
+        }
+
+        public void setFieldConstraint(String[] fieldConstraint) {
+            this.fieldConstraint = fieldConstraint;
+        }
+
+        @Override
+        public String toString() {
+            return "FieldStatus{" +
+                    "_type='" + _type + '\'' +
+                    ", fieldConstraint=" + Arrays.toString(fieldConstraint) +
+                    '}';
+        }
+    }
+
+    /**
      * 创建表
      */
     public static class CreateTable implements ObservableOnSubscribe<Boolean> {
@@ -754,6 +945,16 @@ public enum DbManager {
         }
     }
 
+    public void close(){
+        if (db!=null&&db.isOpen()){
+            db.close();
+        }
+    }
+
+
+    public void updateDBVersion(int version){
+
+    }
 
     /**
      * openhlelper类
