@@ -76,6 +76,22 @@ public enum DbManager {
         return db;
     }
 
+    public SQLiteDatabase getDb() {
+        return db;
+    }
+
+    public boolean checkOpen(String path){
+        if (DbManager.dbManager.getDb()!=null) {
+            if (!DbManager.dbManager.getDb().isOpen()) {
+                DbManager.dbManager.OpenDb(path);
+                return true;
+            }
+        }else {
+            DbManager.dbManager.OpenDb(path);
+            return true;
+        }
+        return false;
+    }
 
     /**
      * 只有条件的查询
@@ -86,7 +102,7 @@ public enum DbManager {
      * @param <T>
      */
     public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, final DbCallBack<List<T>> callback) {
-        this.query(t,whereClause,whereArgs,null,null,null,callback);
+        this.query(false,null,t,whereClause,whereArgs,null,null,null,callback);
     }
 
     /**
@@ -96,7 +112,14 @@ public enum DbManager {
      * @param <T>
      */
     public <T extends TableModel> void query(final T t, final DbCallBack<List<T>> callback) {
-        this.query(t,null,null,null,null,null,callback);
+        this.query(false,null,t,null,null,null,null,null,callback);
+    }
+
+    /**
+     * sql查询 例如select count (_id) as sizes from CashPayDbInfo
+     */
+    public <T extends TableModel> void query(String sql,String [] whereArgs, final DbCallBack<List<T>> callback) {
+        this.query(true,sql,null,null,whereArgs,null,null,null,callback);
     }
 
     /**
@@ -107,7 +130,7 @@ public enum DbManager {
      * @param <T>
      */
     public <T extends TableModel> void query(final T t,String orderBy, final DbCallBack<List<T>> callback) {
-        this.query(t,null,null,null,null,orderBy,callback);
+        this.query(false,null,t,null,null,null,null,orderBy,callback);
     }
     /**
      * 查询
@@ -116,7 +139,7 @@ public enum DbManager {
      * @param callback
      * @param <T>
      */
-    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
+    public <T extends TableModel> void query(boolean isfuction,String fuction,final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
 
         QuerySubscrib query = new QuerySubscrib(
                 db,
@@ -124,7 +147,7 @@ public enum DbManager {
                 mGson,
                 whereClause,
                 whereArgs,
-                groupBy, having, orderBy);
+                groupBy, having, orderBy,fuction,isfuction);
 
         disposable.add((Disposable) Observable.create(query)
                 .subscribeOn(Schedulers.io())
@@ -323,9 +346,11 @@ public enum DbManager {
         private String groupBy;
         private String having;
         private String orderBy;
+        private String fuction;
+        private boolean isfuction;
 
 
-        public QuerySubscrib(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy) {
+        public QuerySubscrib(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy,String fuction,boolean isfuction) {
             this.db = db;
             this.t = t;
             this.mGson = mGson;
@@ -334,6 +359,8 @@ public enum DbManager {
             this.groupBy = groupBy;
             this.having = having;
             this.orderBy = orderBy;
+            this.fuction=fuction;
+            this.isfuction=isfuction;
         }
 
         @Override
@@ -341,43 +368,57 @@ public enum DbManager {
 
             Log.i(TAG, "subscribe: id=" + Thread.currentThread().getId());
             Cursor result = null;//排序
-            try {
-                ArrayList<String> keys = new ArrayList<String>();
-                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
-                Set<String> keySet = maps.keySet();
-                Iterator<String> iterator = keySet.iterator();
-                Class<?> classz = Class.forName(t.getClass().getName());
+            if (!isfuction) {
+                try {
+                    ArrayList<String> keys = new ArrayList<String>();
+                    HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
+                    Set<String> keySet = maps.keySet();
+                    Iterator<String> iterator = keySet.iterator();
+                    Class<?> classz = Class.forName(t.getClass().getName());
 
-                while (iterator.hasNext()) {
-                    String key = iterator.next();
-                    Field field = classz.getDeclaredField(key);
-                    boolean has = field.isAnnotationPresent(TableField.class);
-                    String value = maps.get(key);
-                    if (has) {
-                        Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
-                        keys.add(key);
+                    while (iterator.hasNext()) {
+                        String key = iterator.next();
+                        Field field = classz.getDeclaredField(key);
+                        boolean has = field.isAnnotationPresent(TableField.class);
+                        String value = maps.get(key);
+                        if (has) {
+                            Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                            keys.add(key);
+                        }
                     }
+
+                    String[] columns = new String[keys.size()];
+                    for (int i = 0; i < keys.size(); i++) {
+                        columns[i] = keys.get(i);
+                    }
+                    result = db.query(t.getClass().getSimpleName(),
+                            columns,//要查询的字段
+                            whereClause,//查询的条件
+                            whereArgs,//上面？的值
+                            groupBy,//分组
+                            having,//分组后的条件
+                            orderBy);//排序
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                    e.onError(e1);
+                }
+                if (result!=null) {
+                    e.onNext(result);
+                    e.onComplete();
+                }
+            }else {
+                //函数条件查询
+                result = db.rawQuery(fuction,whereArgs);
+                if (result!=null) {
+                    e.onNext(result);
+                    e.onComplete();
                 }
 
-                String[] columns = new String[keys.size()];
-                for (int i = 0; i < keys.size(); i++) {
-                    columns[i] = keys.get(i);
-                }
-                result = db.query(t.getClass().getSimpleName(),
-                        columns,//要查询的字段
-                        whereClause,//查询的条件
-                        whereArgs,//上面？的值
-                        groupBy,//分组
-                        having,//分组后的条件
-                        orderBy);//排序
-            } catch (Exception e1) {
-                e1.printStackTrace();
-                e.onError(e1);
+
             }
-            if (result!=null) {
-                e.onNext(result);
-                e.onComplete();
-            }
+
+
+
         }
     }
 
