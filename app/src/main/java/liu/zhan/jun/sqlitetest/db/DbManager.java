@@ -182,7 +182,7 @@ public enum DbManager {
                                     switch (type) {
                                         case Cursor.FIELD_TYPE_STRING:
                                             String stringValue = o.getString(i);
-                                            int arrayTag=stringValue.indexOf("[");
+                                            int arrayTag=checkObj(stringValue);
                                             Log.i("DB", "columnName="+columnName+"value="+stringValue);
                                             if (arrayTag==0){
                                                 json.append("\""+columnName + "\":" + stringValue+",");
@@ -250,6 +250,14 @@ public enum DbManager {
 
     }
 
+    private int checkObj(String stringValue) {
+        String index=stringValue.substring(0,1);
+        Log.i(TAG, "checkObj: index="+index);
+        if (index.equals("{")||index.equals("[")){
+            return 0;
+        }
+        return 1;
+    }
 
 
     /**
@@ -382,7 +390,6 @@ public enum DbManager {
                         boolean has = field.isAnnotationPresent(TableField.class);
                         String value = maps.get(key);
                         if (has) {
-                            Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
                             keys.add(key);
                         }
                     }

@@ -12,6 +12,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.TextViewCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.LoginFilter;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -19,6 +20,7 @@ import android.widget.TextView;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.reactivex.Observable;
@@ -49,7 +51,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         content = (TextView) findViewById(R.id.content);
 //         path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
-        path = "infos.db";
+        //如果是4.2或者4.4
+        path=getFilesDir().getParent()+"/databases/infos.db";
+//        path = "infos.db";
         if (Build.VERSION.SDK_INT >= 23) {
             //检查权限
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -81,88 +85,34 @@ public class MainActivity extends AppCompatActivity {
      * @param view
      */
     public void query(View view) {
+        Teacher t=new Teacher(1);
+            DbManager.dbManager.query(t, new DbCallBack<List<Teacher>>() {
+                @Override
+                public void before() {
+                    Log.i(TAG, "before: ============查询");
+                }
 
+                @Override
+                public void success(List<Teacher> result) {
+                    for (Teacher teacher : result) {
+                        Log.i(TAG, "success: "+teacher.getBesetStudent().getName());
+                    }
+                }
 
-        QuerySubscrib query = new QuerySubscrib(db);
-        disposable.add(
-                Observable.create(query)
-                        .subscribeOn(Schedulers.io())
-                        .map(new Function<Cursor,String>() {
-                            @Override
-                            public String apply(@NonNull Cursor result) throws Exception {
-                                Log.i(TAG, "apply: id=" + Thread.currentThread().getId());
-                                String queryresulte = null;
-                                //判断是否查到数据
-                                int cout = result.getCount();
-                                Log.i(TAG, "apply: 有" + 1 + "条数据");
-                                if (cout < 1) {
-                                    return "";
-                                }
-                                while (!result.isLast()) {
-                                    boolean has = result.moveToNext();
-                                    Log.i(TAG, "apply: has====" + has);
-                                    if (has) {
-                                        queryresulte = "createDb: " + result.getString(1) + "|" + result.getInt(0);
-                                    }
+                @Override
+                public void failure(Throwable error) {
+                    Log.i(TAG, "failure: f"+error.getMessage());
+                }
 
+                @Override
+                public void finish() {
 
-                                }
-                                return queryresulte;
-                            }
-                        })
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(new DisposableObserver<String>() {
-                            @Override
-                            public void onNext(String result) {
-                                Log.i(TAG, "onNext: id=" + Thread.currentThread().getId() + "##result=" + result);
-
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                Log.i(TAG, "onError: " + e.getMessage());
-                            }
-
-                            @Override
-                            public void onComplete() {
-                                Log.i(TAG, "onComplete: 查询完毕");
-                            }
-                        })
-        );
-
+                }
+            });
 
     }
 
-    public static class QuerySubscrib implements ObservableOnSubscribe<Cursor> {
-        private SQLiteDatabase db;
 
-        public QuerySubscrib(SQLiteDatabase db) {
-            this.db = db;
-        }
-
-        @Override
-        public void subscribe(@NonNull ObservableEmitter<Cursor> e) throws Exception {
-
-            Log.i(TAG, "subscribe: id=" + Thread.currentThread().getId());
-            Cursor result = null;//排序
-            try {
-                result = db.query(Teacher.class.getSimpleName(),
-                        new String[]{"_id", "name"},//要查询的字段
-                        "_id=?",//查询的条件
-                        new String[]{"10"},//上面？的值
-                        null,//分组
-                        null,//分组后的条件
-                        null);
-            } catch (Exception e1) {
-                Log.i(TAG, "subscribe: eeeeeeeeeeeeeeeeeeeeeeeeeeeee");
-                e1.printStackTrace();
-                e.onError(e1);
-            }
-
-            e.onNext(result);
-            e.onComplete();
-        }
-    }
 
 
     public void query2(View view) {
@@ -208,29 +158,7 @@ public class MainActivity extends AppCompatActivity {
         DbManager.dbManager.unscribe();
     }
 
-    public void createStudent(View view) {
-        DbManager.dbManager.createTable(Student.class, new DbCallBack<Boolean>() {
-            @Override
-            public void before() {
-                Log.i(TAG, "before: 建表前");
-            }
 
-            @Override
-            public void success(Boolean result) {
-                Log.i(TAG, "success: 建表成功" + result);
-            }
-
-            @Override
-            public void failure(Throwable error) {
-                Log.i(TAG, "failure: 建表失败" + error.getMessage());
-            }
-
-            @Override
-            public void finish() {
-                Log.i(TAG, "finish: 建表完成");
-            }
-        });
-    }
 
     /*
     创建表
@@ -269,6 +197,9 @@ public class MainActivity extends AppCompatActivity {
         Teacher teacher = new Teacher();
         teacher.friend = "bbbc";
         teacher.name = "赵云";
+        teacher.setBesetStudent(new Student(0,"小白",20));
+        List<Student> students=getStudents();
+        teacher.setStudents(students);
         DbManager.dbManager.insert(teacher, new DbCallBack<Long>() {
             @Override
             public void before() {
@@ -292,32 +223,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void db_Sql_insert(View view) {
-        Student student = new Student();
-        student.age = 18;
-        student.name = "小勇";
-        DbManager.dbManager.insert(student, new DbCallBack<Long>() {
-            @Override
-            public void before() {
-                Log.i(TAG, "before: 插入数据前");
-            }
 
-            @Override
-            public void success(Long result) {
-                Log.i(TAG, "success: 插入数据成功" + result);
-            }
-
-            @Override
-            public void failure(Throwable error) {
-                Log.i(TAG, "failure: 插入数据失败" + error.getMessage());
-            }
-
-            @Override
-            public void finish() {
-                Log.i(TAG, "finish: 插入数据完成");
-            }
-        });
-    }
 
     public void queryAll(View view) {
 
@@ -401,5 +307,14 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "finish: 删除所有数据完毕");
             }
         });
+    }
+
+    public List<Student> getStudents() {
+        List<Student> students=new ArrayList<>();
+        for(int i=0;i<5;i++){
+            Student student=new Student(i,"编号"+i,(23+i));
+            students.add(student);
+        }
+        return students;
     }
 }
