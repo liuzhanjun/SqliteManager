@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void success(List<Teacher> result) {
                     for (Teacher teacher : result) {
-                        Log.i(TAG, "success: "+teacher.getBesetStudent().getName());
+                        Log.i(TAG, "success: "+teacher.getStudents().toString());
                     }
                 }
 

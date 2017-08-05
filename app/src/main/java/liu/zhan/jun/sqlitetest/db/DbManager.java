@@ -252,7 +252,6 @@ public enum DbManager {
 
     private int checkObj(String stringValue) {
         String index=stringValue.substring(0,1);
-        Log.i(TAG, "checkObj: index="+index);
         if (index.equals("{")||index.equals("[")){
             return 0;
         }
