@@ -85,6 +85,9 @@ public enum DbManager {
             if (!DbManager.dbManager.getDb().isOpen()) {
                 DbManager.dbManager.OpenDb(path);
                 return true;
+            }else{
+               close();
+                DbManager.dbManager.OpenDb(path);
             }
         }else {
             DbManager.dbManager.OpenDb(path);

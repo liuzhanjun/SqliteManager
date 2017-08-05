@@ -40,9 +40,8 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "LOGI";
     private TextView content;
-    private SQLiteDatabase db;
-    private CompositeDisposable disposable;
     private String path;
+    private String path2;
 
 
     @Override
@@ -53,28 +52,31 @@ public class MainActivity extends AppCompatActivity {
 //         path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
         //如果是4.2或者4.4
         path=getFilesDir().getParent()+"/databases/infos.db";
+        path2=getFilesDir().getParent()+"/databases/inos2.db";
 //        path = "infos.db";
         if (Build.VERSION.SDK_INT >= 23) {
             //检查权限
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_CALENDAR}, 1);
             } else {
-                db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+                DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+                DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path2);
             }
         } else {
             //创建并打开数据库 一般情况下 getReadableDatabase 和getWritableDatabase是一样的，只有
             //在磁盘和数据库权限下打开对应的读写数据库
-            db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+            DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+            DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path2);
 
         }
-        disposable = new CompositeDisposable();
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @android.support.annotation.NonNull String[] permissions, @android.support.annotation.NonNull int[] grantResults) {
         if (requestCode == 1) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                db = DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+                DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path);
+                DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path2);
             }
         }
     }
@@ -85,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
      * @param view
      */
     public void query(View view) {
+        DbManager.dbManager.checkOpen(path);
         Teacher t=new Teacher(1);
             DbManager.dbManager.query(t, new DbCallBack<List<Teacher>>() {
                 @Override
@@ -95,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void success(List<Teacher> result) {
                     for (Teacher teacher : result) {
-                        Log.i(TAG, "success: "+teacher.getStudents().toString());
+                        content.setText(teacher.getStudents().toString());
                     }
                 }
 
@@ -116,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void query2(View view) {
-
+        DbManager.dbManager.checkOpen(path);
         Teacher teacher = new Teacher();
         //设置的值表示这个是要查询的字段
         teacher._id = 0;//设置的值无实际意义
@@ -164,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
     创建表
      */
     public void createTable(View view) {
-
+        DbManager.dbManager.checkOpen(path);
         DbManager.dbManager.createTable(Teacher.class, new DbCallBack<Boolean>() {
             @Override
             public void before() {
@@ -200,6 +203,8 @@ public class MainActivity extends AppCompatActivity {
         teacher.setBesetStudent(new Student(0,"小白",20));
         List<Student> students=getStudents();
         teacher.setStudents(students);
+        DbManager.dbManager.checkOpen(path);
+
         DbManager.dbManager.insert(teacher, new DbCallBack<Long>() {
             @Override
             public void before() {
@@ -234,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
         Teacher teacher = new Teacher();
         teacher.name = "王思聪";
         teacher.age = 30;
-
+        DbManager.dbManager.checkOpen(path);
         DbManager.dbManager.update(teacher, "_id=?", new String[]{"10"}, new DbCallBack<Integer>() {
             @Override
             public void before() {
@@ -260,7 +265,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void delete(View view) {
-
+        DbManager.dbManager.checkOpen(path);
         DbManager.dbManager.delete(Teacher.class, "name=?", new String[]{"王思聪"}, new DbCallBack<Integer>() {
             @Override
             public void before() {
@@ -284,6 +289,56 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    public void createStudent(View view) {
+        DbManager.dbManager.checkOpen(path2);
+        DbManager.dbManager.createTable(Student.class, new DbCallBack<Boolean>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: ");
+            }
+
+            @Override
+            public void success(Boolean result) {
+                Log.i(TAG, "success: "+result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: "+error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+
+            }
+        });
+    }
+    public void insertStudent(View view) {
+        DbManager.dbManager.checkOpen(path2);
+        Student s=new Student(null,"赵云",1);
+        DbManager.dbManager.insert(s, new DbCallBack<Long>() {
+            @Override
+            public void before() {
+                Log.i(TAG, "before: ");
+            }
+
+            @Override
+            public void success(Long result) {
+                Log.i(TAG, "success: "+result);
+            }
+
+            @Override
+            public void failure(Throwable error) {
+                Log.i(TAG, "failure: "+error.getMessage());
+            }
+
+            @Override
+            public void finish() {
+
+            }
+        });
+
+    }
     public void deleteAll(View view) {
 
         DbManager.dbManager.delete(Teacher.class, null, null, new DbCallBack<Integer>() {

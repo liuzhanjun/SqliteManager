@@ -18,13 +18,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="创建Teacher表"
-            android:onClick="createTable"/>
+            android:onClick="createTable"
+            android:textSize="38sp"/>
 
         <Button
             android:id="@+id/db_insert"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Teacher插入数据"
+            android:textSize="38sp"
             android:onClick="db_insert"/>
 
 
@@ -33,6 +35,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="query"
+            android:textSize="38sp"
             android:text="query teacher"/>
 
         <Button
@@ -40,6 +43,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="query2"
+            android:textSize="38sp"
             android:text="封装后查询数据"/>
 
         <Button
@@ -47,12 +51,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="queryAll"
+            android:textSize="38sp"
             android:text="查询数据所有数据"/>
         <Button
             android:id="@+id/button4"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="update1"
+            android:textSize="38sp"
             android:text="修改数据"/>
 
         <Button
@@ -60,6 +66,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="delete"
+            android:textSize="38sp"
             android:text="删除单个数据"/>
 
         <Button
@@ -67,7 +74,25 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:onClick="deleteAll"
+            android:textSize="38sp"
             android:text="删除所有数据"/>
+
+        <Button
+            android:id="@+id/button7"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="insertStudent"
+            android:textSize="38sp"
+            android:text="插入Student"/>
+
+        <Button
+            android:id="@+id/button8"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:onClick="createStudent"
+            android:textSize="38sp"
+            android:text="创建Student"/>
+
 
 
         <TextView

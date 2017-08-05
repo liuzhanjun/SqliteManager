@@ -46,6 +46,7 @@
   2.2 打开数据库，创建表<br>
   <pre>
     <code>
+     DbManager.dbManager.checkOpen(path);
             DbManager.dbManager.createTable(Teacher.class, new DbCallBack<Boolean>() {
                         @Override
                         public void before() {
@@ -73,6 +74,7 @@
   2.3 自动更新表结构
 <pre>
     <code>
+     DbManager.dbManager.checkOpen(path);
     DbManager.dbManager.AlterTable(MeiTuan.class, new DbCallBack<Boolean>() {
                 @Override
                 public void before() {
@@ -99,6 +101,7 @@
   3.插入数据<p></p>
   <pre>
     <code>
+     DbManager.dbManager.checkOpen(path);
         Teacher teacher = new Teacher();
                 teacher.friend = "bbbc";
                 teacher.name = "赵云";
@@ -129,6 +132,7 @@
   4.更新数据<p></p>
   <pre>
     <code>
+     DbManager.dbManager.checkOpen(path);
         Teacher teacher = new Teacher();
                 teacher.name = "王思聪";
                 teacher.age = 30;
@@ -160,6 +164,7 @@
   5.删除数据<p></p>
   <pre>
       <code>
+       DbManager.dbManager.checkOpen(path);
             DbManager.dbManager.delete(Teacher.class, "name=?", new String[]{"王思聪"}, new DbCallBack<Integer>() {
                         @Override
                         public void before() {
@@ -188,6 +193,7 @@
   6.查询数据<p></p>
   <pre>
       <code>
+       DbManager.dbManager.checkOpen(path);
             Teacher teacher = new Teacher();
                     //设置的值表示这些是要查询的字段
                     teacher._id = 0;//设置的值无实际意义
