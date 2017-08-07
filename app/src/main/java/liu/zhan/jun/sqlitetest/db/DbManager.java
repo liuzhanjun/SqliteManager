@@ -81,18 +81,7 @@ public enum DbManager {
     }
 
     public boolean checkOpen(String path){
-        if (DbManager.dbManager.getDb()!=null) {
-            if (!DbManager.dbManager.getDb().isOpen()) {
-                DbManager.dbManager.OpenDb(path);
-                return true;
-            }else{
-               close();
-                DbManager.dbManager.OpenDb(path);
-            }
-        }else {
-            DbManager.dbManager.OpenDb(path);
-            return true;
-        }
+       OpenDb(path);
         return false;
     }
 
