@@ -243,9 +243,14 @@ public enum DbManager {
     }
 
     private int checkObj(String stringValue) {
-        String index=stringValue.substring(0,1);
-        if (index.equals("{")||index.equals("[")){
-            return 0;
+        if (stringValue!=null&&!stringValue.equals("")) {
+            String index = stringValue.substring(0, 1);
+            Log.i(TAG, "checkObj: index=" + index);
+            if (index.equals("{") || index.equals("[")) {
+                return 0;
+            }
+        }else{
+            return 1;
         }
         return 1;
     }
