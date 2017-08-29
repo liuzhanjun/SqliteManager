@@ -925,7 +925,7 @@ public enum DbManager {
                             String value = mode.value();
                             //获得字段约束
                             boolean isConstraint = fields[i].isAnnotationPresent(FieldConstraint.class);
-                            if (i > 0) {
+                            if (!sql.substring(sql.length()-1,sql.length()).equals("(")){
                                 sql.append(",");
                             }
                             sql.append(fieldName + " " + value);
