@@ -25,6 +25,7 @@ import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
+import io.reactivex.Scheduler;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.CompositeDisposable;
@@ -63,6 +64,16 @@ public enum DbManager {
     private SQLiteDatabase db;
     private CompositeDisposable disposable;
 
+    private boolean openMutils = true;
+
+    /**
+     *
+     * @param b true在子线程 false在主线程 如果有事务操作 设置为false
+     */
+    public void OperThread(boolean b) {
+        openMutils = b;
+    }
+
     /**
      * @param databaseName 数据库的名称 如果只是名称
      *                     数据库在 data/data/packageName/databases下
@@ -80,50 +91,70 @@ public enum DbManager {
         return db;
     }
 
-    public boolean checkOpen(String path){
-       OpenDb(path);
+    public boolean checkOpen(String path) {
+        OpenDb(path);
         return false;
     }
 
     /**
      * 只有条件的查询
+     *
      * @param t
      * @param whereClause
      * @param whereArgs
      * @param callback
      * @param <T>
      */
-    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, final DbCallBack<List<T>> callback) {
-        this.query(false,null,t,whereClause,whereArgs,null,null,null,callback);
+    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs,
+                                             final DbCallBack<List<T>> callback) {
+        this.query(false, null, t, whereClause, whereArgs, null, null, null, callback);
+    }
+
+
+    /**
+     * 只有条件的查询
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param callback
+     * @param <T>
+     */
+    public <T extends TableModel> void query(final T t, String whereClause, String[] whereArgs, String orderBy,
+                                             final DbCallBack<List<T>> callback) {
+        this.query(false, null, t, whereClause, whereArgs, null, null, orderBy, callback);
     }
 
     /**
      * 无条件查询
+     *
      * @param t
      * @param callback
      * @param <T>
      */
     public <T extends TableModel> void query(final T t, final DbCallBack<List<T>> callback) {
-        this.query(false,null,t,null,null,null,null,null,callback);
+        this.query(false, null, t, null, null, null, null, null, callback);
     }
 
     /**
      * sql查询 例如select count (_id) as sizes from CashPayDbInfo
      */
-    public <T extends TableModel> void query(String sql,String [] whereArgs, final DbCallBack<List<T>> callback) {
-        this.query(true,sql,null,null,whereArgs,null,null,null,callback);
+    public <T extends TableModel> void query(String sql, String[] whereArgs, final DbCallBack<List<T>> callback) {
+        this.query(true, sql, null, null, whereArgs, null, null, null, callback);
     }
 
     /**
      * 查询排序
+     *
      * @param t
      * @param orderBy
      * @param callback
      * @param <T>
      */
-    public <T extends TableModel> void query(final T t,String orderBy, final DbCallBack<List<T>> callback) {
-        this.query(false,null,t,null,null,null,null,orderBy,callback);
+    public <T extends TableModel> void query(final T t, String orderBy, final DbCallBack<List<T>> callback) {
+        this.query(false, null, t, null, null, null, null, orderBy, callback);
     }
+
     /**
      * 查询
      *
@@ -131,7 +162,7 @@ public enum DbManager {
      * @param callback
      * @param <T>
      */
-    public <T extends TableModel> void query(boolean isfuction,String fuction,final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
+    public <T extends TableModel> void query(boolean isfuction, String fuction, final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
 
         QuerySubscrib query = new QuerySubscrib(
                 db,
@@ -139,22 +170,29 @@ public enum DbManager {
                 mGson,
                 whereClause,
                 whereArgs,
-                groupBy, having, orderBy,fuction,isfuction);
+                groupBy, having, orderBy, fuction, isfuction);
+
+        Scheduler scheduler=null;
+        if (openMutils) {
+            scheduler=Schedulers.io();
+        } else {
+            scheduler=AndroidSchedulers.mainThread();
+        }
 
         disposable.add((Disposable) Observable.create(query)
-                .subscribeOn(Schedulers.io())
-                .map(new Function<Cursor,List<T>>() {
+                .subscribeOn(scheduler)
+                .map(new Function<Cursor, List<T>>() {
                     @Override
                     public List<T> apply(@NonNull Cursor o) throws Exception {
+
+                        Log.i(TAG, "subscribe: id=======" + Thread.currentThread().getId());
                         //查询到有多少条数据
                         int count = o.getCount();
-                        Log.i(TAG, "apply: 有" + count + "条数据");
                         if (count < 1) {
                             return null;
                         }
                         //每条数据有多少个字段
                         int columnCount = o.getColumnCount();
-                        Log.i(TAG, "apply: columnCount===" + columnCount);
                         List<T> results = null;
                         StringBuffer json = new StringBuffer("[");
                         //逐条读取每条数据
@@ -174,36 +212,35 @@ public enum DbManager {
                                     switch (type) {
                                         case Cursor.FIELD_TYPE_STRING:
                                             String stringValue = o.getString(i);
-                                            int arrayTag=checkObj(stringValue);
-                                            Log.i("DB", "columnName="+columnName+"value="+stringValue);
-                                            if (arrayTag==0){
-                                                json.append("\""+columnName + "\":" + stringValue+",");
-                                            }else {
-                                                json.append("\""+columnName + "\":\"" + stringValue + "\",");
+                                            int arrayTag = checkObj(stringValue);
+                                            if (arrayTag == 0) {
+                                                json.append("\"" + columnName + "\":" + stringValue + ",");
+                                            } else {
+                                                json.append("\"" + columnName + "\":\"" + stringValue + "\",");
                                             }
 
                                             break;
                                         case Cursor.FIELD_TYPE_INTEGER:
                                             int intValue = o.getInt(i);
-                                            json.append("\""+columnName + "\":" + intValue+",");
+                                            json.append("\"" + columnName + "\":" + intValue + ",");
                                             break;
                                         case Cursor.FIELD_TYPE_FLOAT:
                                             float floatValue = o.getFloat(i);
 //
-                                            json.append("\""+columnName + "\":" + floatValue+",");
+                                            json.append("\"" + columnName + "\":" + floatValue + ",");
 //
                                             break;
                                     }
 
                                 }
                                 if (o.isLast()) {
-                                    if (json.lastIndexOf(",")==json.length()-1) {
-                                        json.deleteCharAt(json.length()-1);
+                                    if (json.lastIndexOf(",") == json.length() - 1) {
+                                        json.deleteCharAt(json.length() - 1);
                                     }
                                     json.append("}]");
                                 } else {
-                                    if (json.lastIndexOf(",")==json.length()-1) {
-                                        json.deleteCharAt(json.length()-1);
+                                    if (json.lastIndexOf(",") == json.length() - 1) {
+                                        json.deleteCharAt(json.length() - 1);
                                     }
                                     json.append("},");
                                 }
@@ -211,7 +248,7 @@ public enum DbManager {
 
                             }
                         }
-                        Log.i("DB", "json ="+json.toString());
+                        Log.i("DB", "json =" + json.toString());
                         return mGson.fromJson(json.toString(), callback.getmType());
                     }
                 })
@@ -221,8 +258,7 @@ public enum DbManager {
                     public void accept(@NonNull Disposable disposable) throws Exception {
                         callback.before();
                     }
-                })
-                .subscribeWith(new DisposableObserver<List<T>>() {
+                }).subscribeWith(new DisposableObserver<List<T>>() {
                     @Override
                     public void onNext(List<T> o) {
                         callback.success(o);
@@ -243,13 +279,12 @@ public enum DbManager {
     }
 
     private int checkObj(String stringValue) {
-        if (stringValue!=null&&!stringValue.equals("")) {
+        if (stringValue != null && !stringValue.equals("")) {
             String index = stringValue.substring(0, 1);
-            Log.i(TAG, "checkObj: index=" + index);
             if (index.equals("{") || index.equals("[")) {
                 return 0;
             }
-        }else{
+        } else {
             return 1;
         }
         return 1;
@@ -266,8 +301,15 @@ public enum DbManager {
     public <T extends TableModel> void insert(T t, final DbCallBack<Long> callback) {
         //在子线程中插入数据
         InsertTable insert = new InsertTable(db, t, mGson);
+        //判断是执行同步操作还是异步操作
+        Scheduler scheduler=null;
+        if (openMutils) {
+            scheduler=Schedulers.io();
+        } else {
+            scheduler=AndroidSchedulers.mainThread();
+        }
         disposable.add((Disposable) Observable.create(insert)
-                .subscribeOn(Schedulers.io())
+                .subscribeOn(scheduler)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(new Consumer<Disposable>() {
                     @Override
@@ -306,7 +348,14 @@ public enum DbManager {
     public <T extends TableModel> void update(T t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
 
         UpdateTable update = new UpdateTable(db, t, mGson, whereClause, whereArgs);
-        disposable.add((Disposable) Observable.create(update).subscribeOn(Schedulers.io())
+        //判断是执行同步操作还是异步操作
+        Scheduler scheduler=null;
+        if (openMutils) {
+            scheduler=Schedulers.io();
+        } else {
+            scheduler=AndroidSchedulers.mainThread();
+        }
+        disposable.add((Disposable) Observable.create(update).subscribeOn(scheduler)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(new Consumer<Disposable>() {
                     @Override
@@ -354,7 +403,7 @@ public enum DbManager {
         private boolean isfuction;
 
 
-        public QuerySubscrib(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy,String fuction,boolean isfuction) {
+        public QuerySubscrib(SQLiteDatabase db, T t, Gson mGson, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, String fuction, boolean isfuction) {
             this.db = db;
             this.t = t;
             this.mGson = mGson;
@@ -363,8 +412,8 @@ public enum DbManager {
             this.groupBy = groupBy;
             this.having = having;
             this.orderBy = orderBy;
-            this.fuction=fuction;
-            this.isfuction=isfuction;
+            this.fuction = fuction;
+            this.isfuction = isfuction;
         }
 
         @Override
@@ -405,21 +454,20 @@ public enum DbManager {
                     e1.printStackTrace();
                     e.onError(e1);
                 }
-                if (result!=null) {
+                if (result != null) {
                     e.onNext(result);
                     e.onComplete();
                 }
-            }else {
+            } else {
                 //函数条件查询
-                result = db.rawQuery(fuction,whereArgs);
-                if (result!=null) {
+                result = db.rawQuery(fuction, whereArgs);
+                if (result != null) {
                     e.onNext(result);
                     e.onComplete();
                 }
 
 
             }
-
 
 
         }
@@ -445,7 +493,14 @@ public enum DbManager {
     public void delete(Class<? extends TableModel> t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
 
         DeleteTable delete = new DeleteTable(db, t, whereClause, whereArgs);
-        disposable.add((Disposable) Observable.create(delete).subscribeOn(Schedulers.io())
+        //判断是执行同步操作还是异步操作
+        Scheduler scheduler=null;
+        if (openMutils) {
+            scheduler=Schedulers.io();
+        } else {
+            scheduler=AndroidSchedulers.mainThread();
+        }
+        disposable.add((Disposable) Observable.create(delete).subscribeOn(scheduler)
                 .observeOn(AndroidSchedulers.mainThread())
                 .doOnSubscribe(new Consumer<Disposable>() {
                     @Override
@@ -487,11 +542,17 @@ public enum DbManager {
             callback.failure(new Throwable("该表已创建"));
             return;
         }
-        //在子线程中操作
+        //判断是执行同步操作还是异步操作
+        Scheduler scheduler=null;
+        if (openMutils) {
+            scheduler=Schedulers.io();
+        } else {
+            scheduler=AndroidSchedulers.mainThread();
+        }
         CreateTable create = new CreateTable(classz, db);
         disposable.add(
                 Observable.create(create)
-                        .subscribeOn(Schedulers.io())
+                        .subscribeOn(scheduler)
                         .observeOn(AndroidSchedulers.mainThread())
                         .doOnSubscribe(new Consumer<Disposable>() {
                             @Override
@@ -524,6 +585,7 @@ public enum DbManager {
 
     /**
      * 更新表
+     *
      * @param classz
      * @see TableModel
      * @see TableField
@@ -534,14 +596,21 @@ public enum DbManager {
         //判断是否已创建该表
         if (DbManager.dbManager.isHasTable(classz.getSimpleName())) {
             //如果创建了该表才能去更新
-            queryTableStruct querystruct=new queryTableStruct(classz,db);
+            //判断是执行同步操作还是异步操作
+            Scheduler scheduler=null;
+            if (openMutils) {
+                scheduler=Schedulers.io();
+            } else {
+                scheduler=AndroidSchedulers.mainThread();
+            }
+            queryTableStruct querystruct = new queryTableStruct(classz, db);
             disposable.add(
                     Observable.create(querystruct)
-                            .subscribeOn(Schedulers.io())
+                            .subscribeOn(scheduler)
                             .flatMap(new Function<ConcurrentSkipListSet<String>, ObservableSource<Boolean>>() {
                                 @Override
                                 public ObservableSource<Boolean> apply(@NonNull ConcurrentSkipListSet<String> s) throws Exception {
-                                    return new AlterTableSub(classz,db,s);
+                                    return new AlterTableSub(classz, db, s);
                                 }
                             })
                             .observeOn(AndroidSchedulers.mainThread())
@@ -587,7 +656,7 @@ public enum DbManager {
         boolean has = result.moveToNext();
         if (has) {
             int tb = result.getInt(0);
-            return tb == 1 ? true :false;
+            return tb == 1 ? true : false;
         }
         return false;
     }
@@ -615,7 +684,7 @@ public enum DbManager {
         @Override
         public void subscribe(@NonNull ObservableEmitter<Integer> obe) throws Exception {
             try {
-                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
+                HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
                 Set<String> keySet = maps.keySet();
                 Iterator<String> iterator = keySet.iterator();
                 Class<?> classz = Class.forName(t.getClass().getName());
@@ -627,11 +696,11 @@ public enum DbManager {
                     String value = maps.get(key);
                     if (has) {
                         Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
-                        int start=value.indexOf("\"");
-                        int end=value.lastIndexOf("\"");
+                        int start = value.indexOf("\"");
+                        int end = value.lastIndexOf("\"");
 
-                        if (start==0&&end==value.length()-1){
-                            value=value.substring(start+1,end);
+                        if (start == 0 && end == value.length() - 1) {
+                            value = value.substring(start + 1, end);
                         }
                         values.put(key, value);
                     }
@@ -700,7 +769,7 @@ public enum DbManager {
         @Override
         public void subscribe(@NonNull ObservableEmitter<Long> obe) throws Exception {
             try {
-                HashMap<String,String> maps = GsonUtils.jsonToMap(t, mGson);
+                HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
                 Set<String> keySet = maps.keySet();
                 Iterator<String> iterator = keySet.iterator();
                 Class<?> classz = Class.forName(t.getClass().getName());
@@ -713,11 +782,11 @@ public enum DbManager {
 
                     if (has) {
 //
-                        int start=value.indexOf("\"");
-                        int end=value.lastIndexOf("\"");
+                        int start = value.indexOf("\"");
+                        int end = value.lastIndexOf("\"");
 
-                        if (start==0&&end==value.length()-1){
-                            value=value.substring(start+1,end);
+                        if (start == 0 && end == value.length() - 1) {
+                            value = value.substring(start + 1, end);
                         }
                         values.put(key, value);
                     }
@@ -745,20 +814,22 @@ public enum DbManager {
     /**
      * 查询表结构
      */
-    public static class queryTableStruct implements ObservableOnSubscribe<ConcurrentSkipListSet<String>>{
+    public static class queryTableStruct implements ObservableOnSubscribe<ConcurrentSkipListSet<String>> {
         private Class classz;
         private SQLiteDatabase db;
+
         public queryTableStruct(Class classz, SQLiteDatabase db) {
             this.classz = classz;
             this.db = db;
         }
+
         @Override
-        public void subscribe(@NonNull ObservableEmitter< ConcurrentSkipListSet<String>> e) throws Exception {
-            String sql="PRAGMA table_info ("+classz.getSimpleName()+")";
-            Cursor cursor=db.rawQuery(sql,null);
-            ConcurrentSkipListSet<String> allColumn=new ConcurrentSkipListSet<String>();
-            while (!cursor.isLast()){
-                boolean has=cursor.moveToNext();
+        public void subscribe(@NonNull ObservableEmitter<ConcurrentSkipListSet<String>> e) throws Exception {
+            String sql = "PRAGMA table_info (" + classz.getSimpleName() + ")";
+            Cursor cursor = db.rawQuery(sql, null);
+            ConcurrentSkipListSet<String> allColumn = new ConcurrentSkipListSet<String>();
+            while (!cursor.isLast()) {
+                boolean has = cursor.moveToNext();
                 if (has) {
                     String name = cursor.getString(cursor.getColumnIndex("name"));
                     allColumn.add(name);
@@ -773,15 +844,15 @@ public enum DbManager {
     /**
      * 更新表结构
      */
-    public static class AlterTableSub implements  ObservableSource<Boolean>{
+    public static class AlterTableSub implements ObservableSource<Boolean> {
         private Class classz;
         private SQLiteDatabase db;
         private ConcurrentSkipListSet<String> columnName;//旧表原有的字段
 
-        public AlterTableSub(Class classz, SQLiteDatabase db,ConcurrentSkipListSet<String> columnName) {
+        public AlterTableSub(Class classz, SQLiteDatabase db, ConcurrentSkipListSet<String> columnName) {
             this.classz = classz;
             this.db = db;
-            this.columnName=columnName;
+            this.columnName = columnName;
         }
 
         @Override
@@ -790,18 +861,18 @@ public enum DbManager {
             //获得所有属性
 
             Field[] fields = classz.getDeclaredFields();
-            ConcurrentSkipListMap<String,FieldStatus> newColumn= getNewColumn(fields,columnName);
-            if (newColumn.size()<=0){
+            ConcurrentSkipListMap<String, FieldStatus> newColumn = getNewColumn(fields, columnName);
+            if (newColumn.size() <= 0) {
                 observer.onError(new Throwable("没有需要添加的字段"));
                 return;
             }
-            Iterator iterator=newColumn.keySet().iterator();
+            Iterator iterator = newColumn.keySet().iterator();
             while (iterator.hasNext()) {
 //                alter table CashPayDbInfo add  alls varchar(25)iterator.next()
-                String key= (String) iterator.next();
-                FieldStatus value=newColumn.get(key);
-                StringBuilder sql=new StringBuilder("alter table "+classz.getSimpleName()+" add COLUMN "+key+" "+value._type);
-                if (value.getFieldConstraint()!=null) {
+                String key = (String) iterator.next();
+                FieldStatus value = newColumn.get(key);
+                StringBuilder sql = new StringBuilder("alter table " + classz.getSimpleName() + " add COLUMN " + key + " " + value._type);
+                if (value.getFieldConstraint() != null) {
                     for (int i = 0; i < value.getFieldConstraint().length; i++) {
                         sql.append(" " + value.getFieldConstraint()[i]);
                     }
@@ -816,11 +887,12 @@ public enum DbManager {
 
         /**
          * 获得要新添加的字段
+         *
          * @param fields
          * @return
          */
-        private ConcurrentSkipListMap<String,FieldStatus> getNewColumn(Field[] fields, ConcurrentSkipListSet<String> oldColumn) {
-            ConcurrentSkipListMap<String,FieldStatus> allColumn=new ConcurrentSkipListMap<String,FieldStatus>();
+        private ConcurrentSkipListMap<String, FieldStatus> getNewColumn(Field[] fields, ConcurrentSkipListSet<String> oldColumn) {
+            ConcurrentSkipListMap<String, FieldStatus> allColumn = new ConcurrentSkipListMap<String, FieldStatus>();
             for (int i = 0; i < fields.length; i++) {
                 //查看是否有TableField注解
                 boolean tablefile = fields[i].isAnnotationPresent(TableField.class);
@@ -832,26 +904,26 @@ public enum DbManager {
                     //获得字段类型
                     String value = mode.value();
                     //获得字段约束
-                    String[] values=null;
+                    String[] values = null;
                     boolean isConstraint = fields[i].isAnnotationPresent(FieldConstraint.class);
                     if (isConstraint) {
                         FieldConstraint constraint = fields[i].getAnnotation(FieldConstraint.class);
                         values = constraint.value();
                     }
-                    FieldStatus fs=new FieldStatus(value,values);
-                    allColumn.put(fieldName,fs);
+                    FieldStatus fs = new FieldStatus(value, values);
+                    allColumn.put(fieldName, fs);
                 }
             }
-            Iterator iterator=oldColumn.iterator();
+            Iterator iterator = oldColumn.iterator();
             while (iterator.hasNext()) {
                 allColumn.remove(iterator.next());
             }
 
-            return  allColumn;
+            return allColumn;
         }
     }
 
-    public static class FieldStatus{
+    public static class FieldStatus {
         public String _type;
         public String[] fieldConstraint;
 
@@ -925,7 +997,7 @@ public enum DbManager {
                             String value = mode.value();
                             //获得字段约束
                             boolean isConstraint = fields[i].isAnnotationPresent(FieldConstraint.class);
-                            if (!sql.substring(sql.length()-1,sql.length()).equals("(")){
+                            if (!sql.substring(sql.length() - 1, sql.length()).equals("(")) {
                                 sql.append(",");
                             }
                             sql.append(fieldName + " " + value);
@@ -983,20 +1055,20 @@ public enum DbManager {
             boolean has = result.moveToNext();
             if (has) {
                 int tb = result.getInt(0);
-                return tb == 1 ? true :false;
+                return tb == 1 ? true : false;
             }
             return false;
         }
     }
 
-    public void close(){
-        if (db!=null&&db.isOpen()){
+    public void close() {
+        if (db != null && db.isOpen()) {
             db.close();
         }
     }
 
 
-    public void updateDBVersion(int version){
+    public void updateDBVersion(int version) {
 
     }
 
