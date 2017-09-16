@@ -12,8 +12,8 @@
         //在sd卡上创建(6.0后注意检查和申请权限)
         String path2=Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
         DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path2);
-        .OperThread(false);//代表每个操作的所在的线程 true子线程 false 主线程
-        如果使用到事务需要把这个设置为false\n
+        .OperThread(false);//代表每个操作的所在的线程 true子线程 false 主线程（如果使用非Syn的方法可以不考虑这个）\n
+        但是如果使用到事务需必须要把这个设置为false，或者使用Syn方法操作\n
         //关于操作（同一线程内）同步异步问题（注意这里的同步和异步表示多个操作是否按照操作顺序返回）\n
         使用Syn后缀的方法 是同步 也就是说发起操作后返回结果后程序才会继续往下跑\n
          没有使用Syn的方法，使用的是回调方式，也就是说发起操作后程序继续往下跑，操作结果可能在某一段时间返回
