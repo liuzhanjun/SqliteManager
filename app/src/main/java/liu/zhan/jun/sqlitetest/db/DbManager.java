@@ -67,7 +67,6 @@ public enum DbManager {
     private boolean openMutils = true;
 
     /**
-     *
      * @param b true在子线程 false在主线程 如果有事务操作 设置为false
      */
     public void OperThread(boolean b) {
@@ -110,6 +109,20 @@ public enum DbManager {
         this.query(false, null, t, whereClause, whereArgs, null, null, null, callback);
     }
 
+    /**
+     * 只有条件的查询
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param type
+     * @param <T>
+     */
+    public <T extends TableModel> List<T> querySyn(final T t, String whereClause, String[] whereArgs,
+                                                   final DbCallType<List<T>> type) {
+        return  this.querySyn(false, null, t, whereClause, whereArgs, null, null, null, type);
+    }
+
 
     /**
      * 只有条件的查询
@@ -125,6 +138,21 @@ public enum DbManager {
         this.query(false, null, t, whereClause, whereArgs, null, null, orderBy, callback);
     }
 
+
+    /**
+     * 只有条件的查询
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param type
+     * @param <T>
+     */
+    public <T extends TableModel> List<T> querySyn(final T t, String whereClause, String[] whereArgs, String orderBy,
+                                                   final DbCallType<List<T>> type) {
+        return this.querySyn(false, null, t, whereClause, whereArgs, null, null, orderBy, type);
+    }
+
     /**
      * 无条件查询
      *
@@ -137,10 +165,28 @@ public enum DbManager {
     }
 
     /**
+     * 无条件查询
+     *
+     * @param t
+     * @param type
+     * @param <T>
+     */
+    public <T extends TableModel> List<T> querySyn(final T t, final DbCallType<List<T>> type) {
+        return  this.querySyn(false, null, t, null, null, null, null, null, type);
+    }
+
+    /**
      * sql查询 例如select count (_id) as sizes from CashPayDbInfo
      */
     public <T extends TableModel> void query(String sql, String[] whereArgs, final DbCallBack<List<T>> callback) {
         this.query(true, sql, null, null, whereArgs, null, null, null, callback);
+    }
+
+    /**
+     * sql查询 例如select count (_id) as sizes from CashPayDbInfo
+     */
+    public <T extends TableModel> List<T> querySyn(String sql, String[] whereArgs, final DbCallType<List<T>> type) {
+        return this.querySyn(true, sql, null, null, whereArgs, null, null, null, type);
     }
 
     /**
@@ -155,6 +201,128 @@ public enum DbManager {
         this.query(false, null, t, null, null, null, null, orderBy, callback);
     }
 
+
+    /**
+     * 查询排序
+     *
+     * @param t
+     * @param orderBy
+     * @param type
+     * @param <T>
+     */
+    public <T extends TableModel> List<T> querySyn(final T t, String orderBy, final DbCallType<List<T>> type) {
+        return this.querySyn(false, null, t, null, null, null, null, orderBy, type);
+    }
+
+
+    private  <T extends TableModel> List<T> querySyn(boolean isfuction, String fuction, final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, DbCallType<List<T>> types) {
+        Log.i(TAG, "subscribe: id=" + Thread.currentThread().getId());
+        Cursor result = null;//排序
+        if (!isfuction) {
+            try {
+                ArrayList<String> keys = new ArrayList<String>();
+                HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
+                Set<String> keySet = maps.keySet();
+                Iterator<String> iterator = keySet.iterator();
+                Class<?> classz = Class.forName(t.getClass().getName());
+
+                while (iterator.hasNext()) {
+                    String key = iterator.next();
+                    Field field = classz.getDeclaredField(key);
+                    boolean has = field.isAnnotationPresent(TableField.class);
+                    String value = maps.get(key);
+                    if (has) {
+                        keys.add(key);
+                    }
+                }
+
+                String[] columns = new String[keys.size()];
+                for (int i = 0; i < keys.size(); i++) {
+                    columns[i] = keys.get(i);
+                }
+                result = db.query(t.getClass().getSimpleName(),
+                        columns,//要查询的字段
+                        whereClause,//查询的条件
+                        whereArgs,//上面？的值
+                        groupBy,//分组
+                        having,//分组后的条件
+                        orderBy);//排序
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+
+        } else {
+            //函数条件查询
+            result = db.rawQuery(fuction, whereArgs);
+        }
+
+        Log.i(TAG, "subscribe: id=======" + Thread.currentThread().getId());
+        //查询到有多少条数据
+        int count = result.getCount();
+        if (count < 1) {
+            return null;
+        }
+        //每条数据有多少个字段
+        int columnCount = result.getColumnCount();
+        List<T> results = null;
+        StringBuffer json = new StringBuffer("[");
+        //逐条读取每条数据
+        while (!result.isLast()) {
+            //游标移动到下一行
+            boolean has = result.moveToNext();
+            if (has) {
+
+                //说明这行有数据
+
+                json.append("{");
+                for (int i = 0; i < columnCount; i++) {
+
+                    String columnName = result.getColumnName(i);
+                    int type = result.getType(i);
+
+                    switch (type) {
+                        case Cursor.FIELD_TYPE_STRING:
+                            String stringValue = result.getString(i);
+                            int arrayTag = checkObj(stringValue);
+                            if (arrayTag == 0) {
+                                json.append("\"" + columnName + "\":" + stringValue + ",");
+                            } else {
+                                json.append("\"" + columnName + "\":\"" + stringValue + "\",");
+                            }
+
+                            break;
+                        case Cursor.FIELD_TYPE_INTEGER:
+                            int intValue = result.getInt(i);
+                            json.append("\"" + columnName + "\":" + intValue + ",");
+                            break;
+                        case Cursor.FIELD_TYPE_FLOAT:
+                            float floatValue = result.getFloat(i);
+//
+                            json.append("\"" + columnName + "\":" + floatValue + ",");
+//
+                            break;
+                    }
+
+                }
+                if (result.isLast()) {
+                    if (json.lastIndexOf(",") == json.length() - 1) {
+                        json.deleteCharAt(json.length() - 1);
+                    }
+                    json.append("}]");
+                } else {
+                    if (json.lastIndexOf(",") == json.length() - 1) {
+                        json.deleteCharAt(json.length() - 1);
+                    }
+                    json.append("},");
+                }
+
+
+            }
+        }
+        Log.i("DB", "json =" + json.toString());
+        return mGson.fromJson(json.toString(), types.getmType());
+    }
+
     /**
      * 查询
      *
@@ -162,7 +330,7 @@ public enum DbManager {
      * @param callback
      * @param <T>
      */
-    public <T extends TableModel> void query(boolean isfuction, String fuction, final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
+    private  <T extends TableModel> void query(boolean isfuction, String fuction, final T t, String whereClause, String[] whereArgs, String groupBy, String having, String orderBy, final DbCallBack<List<T>> callback) {
 
         QuerySubscrib query = new QuerySubscrib(
                 db,
@@ -172,11 +340,11 @@ public enum DbManager {
                 whereArgs,
                 groupBy, having, orderBy, fuction, isfuction);
 
-        Scheduler scheduler=null;
+        Scheduler scheduler = null;
         if (openMutils) {
-            scheduler=Schedulers.io();
+            scheduler = Schedulers.io();
         } else {
-            scheduler=AndroidSchedulers.mainThread();
+            scheduler = AndroidSchedulers.mainThread();
         }
 
         disposable.add((Disposable) Observable.create(query)
@@ -292,6 +460,49 @@ public enum DbManager {
 
 
     /**
+     * 非回调同步插入操作
+     *
+     * @param t
+     * @param <T>
+     * @return
+     */
+    public <T extends TableModel> Long insertSyn(T t) {
+        long row = -1;
+        try {
+            HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
+            Set<String> keySet = maps.keySet();
+            Iterator<String> iterator = keySet.iterator();
+            Class<?> classz = Class.forName(t.getClass().getName());
+            ContentValues values = new ContentValues();
+            while (iterator.hasNext()) {
+                String key = iterator.next();
+                Field field = classz.getDeclaredField(key);
+                boolean has = field.isAnnotationPresent(TableField.class);
+                String value = maps.get(key);
+
+                if (has) {
+//
+                    int start = value.indexOf("\"");
+                    int end = value.lastIndexOf("\"");
+
+                    if (start == 0 && end == value.length() - 1) {
+                        value = value.substring(start + 1, end);
+                    }
+                    values.put(key, value);
+                }
+            }
+
+            row = db.insert(t.getClass().getSimpleName(), null, values);
+
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        return row;
+    }
+
+    /**
      * 插入数据
      *
      * @param t
@@ -301,12 +512,12 @@ public enum DbManager {
     public <T extends TableModel> void insert(T t, final DbCallBack<Long> callback) {
         //在子线程中插入数据
         InsertTable insert = new InsertTable(db, t, mGson);
-        //判断是执行同步操作还是异步操作
-        Scheduler scheduler=null;
+        //判断是使用哪个线程操作
+        Scheduler scheduler = null;
         if (openMutils) {
-            scheduler=Schedulers.io();
+            scheduler = Schedulers.io();
         } else {
-            scheduler=AndroidSchedulers.mainThread();
+            scheduler = AndroidSchedulers.mainThread();
         }
         disposable.add((Disposable) Observable.create(insert)
                 .subscribeOn(scheduler)
@@ -337,6 +548,49 @@ public enum DbManager {
 
 
     /**
+     * 非回调方式的更新操作
+     *
+     * @param t
+     * @param whereClause
+     * @param whereArgs
+     * @param <T>
+     * @return
+     */
+    public <T extends TableModel> Integer updateSyn(T t, String whereClause, String[] whereArgs) {
+        int row = -1;
+        try {
+            HashMap<String, String> maps = GsonUtils.jsonToMap(t, mGson);
+            Set<String> keySet = maps.keySet();
+            Iterator<String> iterator = keySet.iterator();
+            Class<?> classz = Class.forName(t.getClass().getName());
+            ContentValues values = new ContentValues();
+            while (iterator.hasNext()) {
+                String key = iterator.next();
+                Field field = classz.getDeclaredField(key);
+                boolean has = field.isAnnotationPresent(TableField.class);
+                String value = maps.get(key);
+                if (has) {
+                    Log.i(TAG, "subscribe: key=" + key + "|value=" + value);
+                    int start = value.indexOf("\"");
+                    int end = value.lastIndexOf("\"");
+
+                    if (start == 0 && end == value.length() - 1) {
+                        value = value.substring(start + 1, end);
+                    }
+                    values.put(key, value);
+                }
+            }
+
+            row = db.update(t.getClass().getSimpleName(), values, whereClause, whereArgs);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        return row;
+    }
+
+    /**
      * 更新数据
      *
      * @param t
@@ -348,12 +602,11 @@ public enum DbManager {
     public <T extends TableModel> void update(T t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
 
         UpdateTable update = new UpdateTable(db, t, mGson, whereClause, whereArgs);
-        //判断是执行同步操作还是异步操作
-        Scheduler scheduler=null;
+        Scheduler scheduler = null;
         if (openMutils) {
-            scheduler=Schedulers.io();
+            scheduler = Schedulers.io();
         } else {
-            scheduler=AndroidSchedulers.mainThread();
+            scheduler = AndroidSchedulers.mainThread();
         }
         disposable.add((Disposable) Observable.create(update).subscribeOn(scheduler)
                 .observeOn(AndroidSchedulers.mainThread())
@@ -478,8 +731,23 @@ public enum DbManager {
      *
      * @param t
      */
+    public Integer deleteAllSyn(Class<? extends TableModel> t) {
+        return deleteSyn(t, null, null);
+    }
+
+    /**
+     * 清空数据
+     *
+     * @param t
+     */
     public void deleteAll(Class<? extends TableModel> t, DbCallBack<Integer> callback) {
-        delete(t, null, null, callback);
+        delete(t, null, null,callback);
+    }
+
+
+    public Integer deleteSyn(Class<? extends TableModel> t, String whereClause, String[] whereArgs) {
+        int row = db.delete(t.getSimpleName(), whereClause, whereArgs);
+        return row;
     }
 
     /**
@@ -493,12 +761,11 @@ public enum DbManager {
     public void delete(Class<? extends TableModel> t, String whereClause, String[] whereArgs, final DbCallBack<Integer> callback) {
 
         DeleteTable delete = new DeleteTable(db, t, whereClause, whereArgs);
-        //判断是执行同步操作还是异步操作
-        Scheduler scheduler=null;
+        Scheduler scheduler = null;
         if (openMutils) {
-            scheduler=Schedulers.io();
+            scheduler = Schedulers.io();
         } else {
-            scheduler=AndroidSchedulers.mainThread();
+            scheduler = AndroidSchedulers.mainThread();
         }
         disposable.add((Disposable) Observable.create(delete).subscribeOn(scheduler)
                 .observeOn(AndroidSchedulers.mainThread())
@@ -542,12 +809,11 @@ public enum DbManager {
             callback.failure(new Throwable("该表已创建"));
             return;
         }
-        //判断是执行同步操作还是异步操作
-        Scheduler scheduler=null;
+        Scheduler scheduler = null;
         if (openMutils) {
-            scheduler=Schedulers.io();
+            scheduler = Schedulers.io();
         } else {
-            scheduler=AndroidSchedulers.mainThread();
+            scheduler = AndroidSchedulers.mainThread();
         }
         CreateTable create = new CreateTable(classz, db);
         disposable.add(
@@ -596,12 +862,11 @@ public enum DbManager {
         //判断是否已创建该表
         if (DbManager.dbManager.isHasTable(classz.getSimpleName())) {
             //如果创建了该表才能去更新
-            //判断是执行同步操作还是异步操作
-            Scheduler scheduler=null;
+            Scheduler scheduler = null;
             if (openMutils) {
-                scheduler=Schedulers.io();
+                scheduler = Schedulers.io();
             } else {
-                scheduler=AndroidSchedulers.mainThread();
+                scheduler = AndroidSchedulers.mainThread();
             }
             queryTableStruct querystruct = new queryTableStruct(classz, db);
             disposable.add(
@@ -1007,8 +1272,6 @@ public enum DbManager {
                                 for (int j = 0; j < values.length; j++) {
                                     sql.append(" " + values[j]);
                                 }
-
-
                             }
 
                         } else {

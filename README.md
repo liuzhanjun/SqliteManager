@@ -12,6 +12,11 @@
         //在sd卡上创建(6.0后注意检查和申请权限)
         String path2=Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download/info.db";
         DbManager.dbManager.getInstans(getApplicationContext()).OpenDb(path2);
+        .OperThread(false);//代表每个操作的所在的线程 true子线程 false 主线程
+        如果使用到事务需要把这个设置为false\n
+        //关于操作（同一线程内）同步异步问题（注意这里的同步和异步表示多个操作是否按照操作顺序返回）\n
+        使用Syn后缀的方法 是同步 也就是说发起操作后返回结果后程序才会继续往下跑\n
+         没有使用Syn的方法，使用的是回调方式，也就是说发起操作后程序继续往下跑，操作结果可能在某一段时间返回
     </code>
 </pre>
 
@@ -46,7 +51,6 @@
   2.2 打开数据库，创建表<br>
   <pre>
     <code>
-     DbManager.dbManager.checkOpen(path);
             DbManager.dbManager.createTable(Teacher.class, new DbCallBack<Boolean>() {
                         @Override
                         public void before() {
@@ -74,7 +78,6 @@
   2.3 自动更新表结构
 <pre>
     <code>
-     DbManager.dbManager.checkOpen(path);
     DbManager.dbManager.AlterTable(MeiTuan.class, new DbCallBack<Boolean>() {
                 @Override
                 public void before() {
@@ -101,7 +104,6 @@
   3.插入数据<p></p>
   <pre>
     <code>
-     DbManager.dbManager.checkOpen(path);
         Teacher teacher = new Teacher();
                 teacher.friend = "bbbc";
                 teacher.name = "赵云";
@@ -132,7 +134,6 @@
   4.更新数据<p></p>
   <pre>
     <code>
-     DbManager.dbManager.checkOpen(path);
         Teacher teacher = new Teacher();
                 teacher.name = "王思聪";
                 teacher.age = 30;
@@ -164,7 +165,6 @@
   5.删除数据<p></p>
   <pre>
       <code>
-       DbManager.dbManager.checkOpen(path);
             DbManager.dbManager.delete(Teacher.class, "name=?", new String[]{"王思聪"}, new DbCallBack<Integer>() {
                         @Override
                         public void before() {
@@ -193,7 +193,6 @@
   6.查询数据<p></p>
   <pre>
       <code>
-       DbManager.dbManager.checkOpen(path);
             Teacher teacher = new Teacher();
                     //设置的值表示这些是要查询的字段
                     teacher._id = 0;//设置的值无实际意义
